@@ -8,12 +8,14 @@ import matplotlib.pyplot as plt
 from propellants import Propellant
 from physics.combustion import CEASolver
 from geometry.nozzle import NozzleGenerator, NozzleGeometryData
-from geometry.cooling import ChannelGeometryGenerator
+from geometry.cooling import ChannelGeometryGenerator, CoolingChannelGeometry
 from physics.fluid_flow import mach_from_area_ratio
 from physics.heat_transfer import calculate_bartz_coefficient, calculate_adiabatic_wall_temp
 from physics.cooling import RegenCoolingSolver
 from geometry.injector import SwirlInjectorSizer
+from rocket_engine.src.visualization_3d import plot_engine_3d, plot_coolant_channels_3d
 from utils.units import Units
+from visualization import plot_channel_cross_section, plot_channel_cross_section_radial
 
 
 @dataclass
@@ -21,11 +23,11 @@ class EngineConfig:
     engine_name: str
     fuel: str
     oxidizer: str
-    thrust_n: float  # Design Thrust [N]
-    pc_bar: float  # Chamber Pressure [Bar]
-    mr: float  # Mixture Ratio (Ox/Fuel)
-    p_exit_bar: float  # Target exit pressure
-    L_star: float  # Characteristic Length [mm]
+    thrust_n: float         # Design Thrust [N]
+    pc_bar: float           # Chamber Pressure [Bar]
+    mr: float               # Mixture Ratio (Ox/Fuel)
+    p_exit_bar: float       # Target exit pressure
+    L_star: float           # Characteristic Length [mm]
     contraction_ratio: float
     eff_combustion: float = 0.95
 
@@ -42,6 +44,7 @@ class EngineDesignResult:
 
     # Detailed Data Objects
     geometry: NozzleGeometryData
+    channel_geometry: CoolingChannelGeometry
     cooling_data: dict
 
     # --- ADDED PHYSICS ARRAYS ---
@@ -143,7 +146,7 @@ class LiquidEngine:
 
         # Auto-size for 1.5mm width / 1mm rib at throat
         channel_geo = chan_gen.define_by_throat_dimensions(
-            width_at_throat=1e-3,
+            width_at_throat=1.0e-3,
             rib_at_throat=0.6e-3,
             height=0.75e-3
         )
@@ -154,12 +157,12 @@ class LiquidEngine:
         mdot_ox = mdot_total * (self.cfg.mr / (1 + self.cfg.mr))
 
         cooling_res = solver.solve(
-            mdot_coolant_total=mdot_ox/3,
+            mdot_coolant_total=mdot_ox,
             pin_coolant=100e5,
-            tin_coolant=280.0,
+            tin_coolant=290.0,
             T_gas_recovery=T_aw,
             h_gas=h_g,
-            mode='co-flow'
+            mode='counter-flow'
         )
 
         # Store Result
@@ -171,6 +174,7 @@ class LiquidEngine:
             de_mm=Rt_m * 2000 * np.sqrt(eps_opt),
             length_mm=xs[-1] * 1000 - xs[0] * 1000,
             geometry=self.geo,
+            channel_geometry=channel_geo,
             cooling_data=cooling_res,
             # --- Store Physics Arrays ---
             mach_numbers=machs,
@@ -192,6 +196,7 @@ class LiquidEngine:
         cfg = self.cfg
         cool = res.cooling_data
         geo = res.geometry
+        chan = res.channel_geometry
 
         os.makedirs(output_dir, exist_ok=True)
         base_name = f"{output_dir}/{cfg.engine_name.replace(' ', '_')}"
@@ -204,6 +209,8 @@ class LiquidEngine:
             "Mach Number": res.mach_numbers,  # <--- FIXED
             "T_Gas_Recovery [K]": res.T_gas_recovery,  # <--- FIXED
             "h_Gas [W/m2K]": res.h_gas,  # <--- ADDED
+            "Channel Width [mm]": chan.channel_width * 1000,
+            "Channel Height [mm]": chan.channel_height * 1000,
             "T_Wall_Hot [K]": cool['T_wall_hot'],
             "T_Wall_Cold [K]": cool['T_wall_cold'],
             "T_Coolant [K]": cool['T_coolant'],
@@ -244,6 +251,32 @@ class LiquidEngine:
         plt.tight_layout()
         plt.show()
 
+        # --- Visualize Throat Cross Section ---
+        # Find index of throat (x closest to 0)
+        idx_throat = np.abs(xs).argmin()
+
+        # Plot Radial View (Full 360 degrees)
+        plot_channel_cross_section_radial(
+            self.last_result.channel_geometry,
+            station_idx=idx_throat,
+            closeout_thickness=0.001,
+            sector_angle=360  # Change to 90 or 45 to zoom in
+        )
+        # --- 3D Visualization ---
+        print("\nGenerating 3D Cutaway...")
+        plot_engine_3d(
+            self.last_result.channel_geometry,
+            closeout_thickness=0.001,  # 1mm jacket
+            sector_angle=270,  # 90 degree cutaway
+            resolution=100  # Smoothness
+        )
+
+        print("\nGenerating 3D Channel Visualization...")
+        plot_coolant_channels_3d(
+            self.last_result.channel_geometry,
+            num_channels_to_show=30,  # Plot 5 adjacent channels
+            resolution=50
+        )
 
 # ... (Main block remains same) ...
 
@@ -251,7 +284,7 @@ class LiquidEngine:
 if __name__ == "__main__":
     # Define constraints
     conf = EngineConfig(
-        engine_name="Phoenix-1",
+        engine_name="HOPPER E1-1A",
         fuel="Ethanol90",
         oxidizer="N2O",
         thrust_n=2200,
@@ -266,6 +299,8 @@ if __name__ == "__main__":
     engine = LiquidEngine(conf)
     result = engine.design()
     engine.save_specification()
+
+
 
     # Sizing Injector
     inj_sizer = SwirlInjectorSizer(result.massflow_total, p_drop=5e5, n_elements=5, propellant_density=800)
