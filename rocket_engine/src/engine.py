@@ -5,18 +5,17 @@ from dataclasses import dataclass
 import matplotlib.pyplot as plt
 
 # Import Modules
-from propellants import Propellant
-from physics.combustion import CEASolver
-from geometry.nozzle import NozzleGenerator, NozzleGeometryData
-from geometry.cooling import ChannelGeometryGenerator, CoolingChannelGeometry
-from physics.fluid_flow import mach_from_area_ratio
-from physics.heat_transfer import calculate_bartz_coefficient, calculate_adiabatic_wall_temp
-from physics.cooling import RegenCoolingSolver
-from geometry.injector import SwirlInjectorSizer
+from src.geometry.nozzle import NozzleGenerator, NozzleGeometryData
+from src.geometry.cooling import ChannelGeometryGenerator, CoolingChannelGeometry
+from src.physics.combustion import CEASolver
+from src.physics.fluid_flow import mach_from_area_ratio, get_expansion_ratio
+from src.physics.heat_transfer import calculate_bartz_coefficient, calculate_adiabatic_wall_temp
+from src.physics.cooling import RegenCoolingSolver
+from src.utils.units import Units
+from src.analysis.fluid_state import plot_n2o_p_t_diagram
+
+from rocket_engine.src.visualization import plot_channel_cross_section_radial
 from rocket_engine.src.visualization_3d import plot_engine_3d, plot_coolant_channels_3d
-from utils.units import Units
-from visualization import plot_channel_cross_section, plot_channel_cross_section_radial
-from analysis.fluid_state import plot_n2o_t_rho_diagram, plot_n2o_p_t_diagram
 
 
 @dataclass
@@ -420,50 +419,101 @@ class LiquidEngine:
         print(f"Saved Profile Data: {profile_file}")
 
     def _plot_results(self, xs, ys, cooling_res, title="Engine Analysis"):
-        # Same plotting logic as before, just updated title
-        fig, axes = plt.subplots(4, 1, figsize=(10, 20))
+        """
+        Generates a 4-panel dashboard of the engine performance.
+        """
+        # Set style for nicer grids and colors
+        try:
+            plt.style.use('seaborn-v0_8-whitegrid')
+        except:
+            plt.style.use('bmh')  # Fallback if seaborn style not found
+
+        fig, axes = plt.subplots(4, 1, figsize=(12, 18))
         (ax1, ax3, ax5, ax7) = axes
 
-        fig.suptitle(title, fontsize=16)
+        fig.suptitle(title, fontsize=18, fontweight='bold', y=0.98)
 
-        # 1. Geometry & Temps
-        ax1.plot(xs * 1000, ys * 1000, 'k-', linewidth=2, label="Wall")
-        ax1.set_ylabel("Radius [mm]")
-        ax1.grid(True, alpha=0.3)
+        # =======================================================
+        # PLOT 1: Geometry & Thermal State
+        # =======================================================
+        ax1.set_title("1. Chamber Geometry & Thermal State", fontsize=12, fontweight='bold')
 
+        # Wall Contour (Left Axis)
+        l1, = ax1.plot(xs * 1000, ys * 1000, 'k-', linewidth=3, label="Chamber Wall")
+        ax1.set_ylabel("Radius [mm]", fontsize=11, fontweight='bold')
+        ax1.grid(True, linestyle='--', alpha=0.5)
+
+        # Temperatures (Right Axis)
         ax2 = ax1.twinx()
-        ax2.plot(xs * 1000, cooling_res['T_wall_hot'], 'r-', label="T_HotWall")
-        ax2.plot(xs * 1000, cooling_res['T_coolant'], 'b--', label="T_Coolant")
-        ax2.set_ylabel("Temperature [K]")
-        ax2.legend(loc='upper right')
+        l2, = ax2.plot(xs * 1000, cooling_res['T_wall_hot'], 'r-', linewidth=1.5, label="Hot Gas Wall Temp")
+        l3, = ax2.plot(xs * 1000, cooling_res['T_coolant'], 'b--', linewidth=1.5, label="Coolant Temp")
 
-        # 2. Mach & Heat Flux
-        ax3.plot(xs * 1000, self.last_result.mach_numbers, 'g-', label="Mach")
-        ax3.set_ylabel("Mach Number")
-        ax3.grid(True)
+        ax2.set_ylabel("Temperature [K]", color='r', fontsize=11, fontweight='bold')
+        ax2.tick_params(axis='y', labelcolor='r')
 
+        # Combined Legend
+        lines = [l1, l2, l3]
+        labels = [l.get_label() for l in lines]
+        ax1.legend(lines, labels, loc='upper right', frameon=True, framealpha=0.9, fontsize=10)
+
+        # =======================================================
+        # PLOT 2: Gas Dynamics & Heat Flux
+        # =======================================================
+        ax3.set_title("2. Gas Dynamics & Heat Flux Profile", fontsize=12, fontweight='bold')
+
+        # Mach Number (Left Axis)
+        l1, = ax3.plot(xs * 1000, self.last_result.mach_numbers, 'g-', linewidth=2, label="Mach Number")
+        ax3.set_ylabel("Mach Number [-]", color='g', fontsize=11, fontweight='bold')
+        ax3.tick_params(axis='y', labelcolor='g')
+        ax3.grid(True, linestyle='--', alpha=0.5)
+
+        # Heat Flux (Right Axis)
         ax4 = ax3.twinx()
-        ax4.plot(xs * 1000, cooling_res['q_flux'] / 1e6, 'm-', label="Heat Flux")
-        ax4.set_ylabel("Heat Flux [MW/m2]")
+        l2, = ax4.plot(xs * 1000, cooling_res['q_flux'] / 1e6, 'm-', linewidth=1.5, label="Heat Flux")
+        ax4.set_ylabel("Heat Flux [MW/m²]", color='m', fontsize=11, fontweight='bold')
+        ax4.tick_params(axis='y', labelcolor='m')
 
-        # 3. Pressure
-        ax5.plot(xs * 1000, cooling_res['P_coolant'] / 1e5, 'c-', label="Pressure")
-        ax5.set_ylabel("Coolant Pressure [bar]")
-        ax5.grid(True)
+        # Combined Legend
+        lines = [l1, l2]
+        ax3.legend(lines, [l.get_label() for l in lines], loc='upper left', frameon=True, framealpha=0.9)
 
-        # 4. Hydraulics
-        ax7.plot(xs * 1000, cooling_res['velocity'], 'k-', label="Velocity")
-        ax7.set_ylabel("Velocity [m/s]")
-        ax7.set_xlabel("Axial Position [mm]")
-        ax7.grid(True)
+        # =======================================================
+        # PLOT 3: Coolant Pressure Evolution
+        # =======================================================
+        ax5.set_title("3. Coolant Pressure Drop", fontsize=12, fontweight='bold')
 
+        ax5.plot(xs * 1000, cooling_res['P_coolant'] / 1e5, 'c-', linewidth=2.5, label="Coolant Pressure")
+        ax5.fill_between(xs * 1000, cooling_res['P_coolant'] / 1e5, alpha=0.1, color='c')
+
+        ax5.set_ylabel("Coolant Pressure [bar]", fontsize=11, fontweight='bold')
+        ax5.grid(True, linestyle='--', alpha=0.5)
+        ax5.legend(loc='best', frameon=True)
+
+        # =======================================================
+        # PLOT 4: Coolant Flow Properties
+        # =======================================================
+        ax7.set_title("4. Coolant Hydraulics (Velocity & Density)", fontsize=12, fontweight='bold')
+
+        # Velocity (Left Axis)
+        l1, = ax7.plot(xs * 1000, cooling_res['velocity'], 'k-', linewidth=1.5, label="Velocity")
+        ax7.set_ylabel("Velocity [m/s]", color='k', fontsize=11, fontweight='bold')
+        ax7.set_xlabel("Axial Position [mm]", fontsize=12, fontweight='bold')
+        ax7.grid(True, linestyle='--', alpha=0.5)
+
+        # Density (Right Axis)
         ax8 = ax7.twinx()
-        ax8.plot(xs * 1000, cooling_res['density'], 'b:', label="Density")
-        ax8.set_ylabel("Density [kg/m3]")
+        l2, = ax8.plot(xs * 1000, cooling_res['density'], 'b:', linewidth=2.5, label="Density")
+        ax8.set_ylabel("Density [kg/m³]", color='b', fontsize=11, fontweight='bold')
+        ax8.tick_params(axis='y', labelcolor='b')
 
-        plt.tight_layout()
+        # Combined Legend
+        lines = [l1, l2]
+        ax7.legend(lines, [l.get_label() for l in lines], loc='upper center', frameon=True, framealpha=0.9)
+
+        # Adjust layout to make room for titles
+        plt.tight_layout(rect=[0, 0.0, 1, 0.97])
         plt.show()
-        '''
+
         # --- Visualize Throat Cross Section ---
         # Find index of throat (x closest to 0)
         idx_throat = np.abs(xs).argmin()
@@ -490,54 +540,28 @@ class LiquidEngine:
             self.last_result.channel_geometry,
             num_channels_to_show=30,  # Plot 5 adjacent channels
             resolution=50
-        )'''
+        )
+
+    def analyze_transient(self, duration=0.5):
+        """Runs startup simulation."""
+        from src.physics.transients import TransientSimulation
+
+        if not self.last_result:
+            print("Run design() first.")
+            return
+
+        sim = TransientSimulation(self.last_result, self.cfg)
+        sol = sim.run(t_end=duration)
+
+        # Quick Plot
+        fig, ax = plt.subplots()
+        ax.plot(sol.t, sol.y[2] / 1e5, label='Chamber Pressure [bar]')
+        ax.plot(sol.t, sol.y[0] * 10, label='Ox Flow * 10')
+        ax.set_xlabel('Time [s]')
+        ax.legend()
+        plt.show()
 
 
-# --- Example Usage ---
-if __name__ == "__main__":
-    # 1. Define Design Point
-    conf = EngineConfig(
-        engine_name="HOPPER E1-1A",
-        fuel="Ethanol90",
-        oxidizer="N2O",
-        thrust_n=2200,
-        pc_bar=25,
-        mr=4.0,
-        p_exit_bar=1.013,
-        contraction_ratio=12,
-        expansion_ratio=8,
-
-        # Geometry
-        channel_width_throat=1.0e-3,
-        channel_height=0.75e-3,
-        rib_width_throat=0.6e-3,
-        wall_thickness=0.5e-3,
-
-        # Coolant
-        coolant_p_in_bar=98.0
-    )
-
-    engine = LiquidEngine(conf)
-
-    # 2. Design Point Run
-    res_design = engine.design(plot=False)  # Don't popup individual plots
-
-    # 3. Off-Design Runs
-    # Case A: Throttled (Low Pc, Low Flow)
-    res_throttle = engine.analyze(pc_bar=15.0, mr=3.5, plot=False)
-    # Case B: Hot Run (High MR, slightly higher Pc)
-    res_hot = engine.analyze(pc_bar=28.0, mr=5.5, plot=False)
-
-    # 4. Compare in Phase Diagram
-    print("\nGenerating Multi-Run Phase Diagram...")
-
-    results_map = {
-        "Design (25 bar, MR 4.0)": res_design,
-        "Throttled (15 bar, MR 3.5)": res_throttle,
-        "Hot Run (28 bar, MR 5.5)": res_hot
-    }
-
-    plot_n2o_p_t_diagram(results_map)
 
 
 

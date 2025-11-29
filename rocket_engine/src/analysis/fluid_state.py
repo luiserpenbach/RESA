@@ -142,7 +142,7 @@ def plot_n2o_p_t_diagram(results: Union['EngineDesignResult', List['EngineDesign
                  - Dictionary of {"Label": EngineDesignResult}
         fluid_name: CoolProp fluid string
     """
-    from rocket_engine.src.engine import EngineDesignResult
+    from src.engine import EngineDesignResult
     # --- Input Normalization ---
     if isinstance(results, EngineDesignResult):
         data_dict = {"Design Point": results}

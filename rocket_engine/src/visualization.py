@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Patch, Wedge
-from geometry.cooling import CoolingChannelGeometry
+from src.geometry.cooling import CoolingChannelGeometry
 
 
 def plot_channel_cross_section(geo: CoolingChannelGeometry,
@@ -114,10 +114,12 @@ def plot_channel_cross_section(geo: CoolingChannelGeometry,
     plt.show()
 
 
+
 def plot_channel_cross_section_radial(geo: CoolingChannelGeometry,
                                       station_idx: int,
                                       closeout_thickness: float = 0.001,
-                                      sector_angle: float = 360.0):
+                                      sector_angle: float = 360.0,
+                                      show: bool = True):
     """
     Visualizes the channel cross-section in true Radial (Polar) coordinates.
 
@@ -244,4 +246,7 @@ def plot_channel_cross_section_radial(geo: CoolingChannelGeometry,
 
     plt.title(f"Radial Cross-Section\nStation {station_idx}", y=1.02)
     plt.tight_layout()
-    plt.show()
+    if show:
+        plt.show()
+
+    return fig  # Return the figure object!
