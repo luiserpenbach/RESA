@@ -73,7 +73,6 @@ def calculate_bartz_coefficient(
     conversion_factor = BTU_TO_J / (IN2_TO_M2 * 1.0 * F_TO_K)
 
     h_g_si = h_g_imp * conversion_factor
-    print(h_g_si)
     return h_g_si
 
 

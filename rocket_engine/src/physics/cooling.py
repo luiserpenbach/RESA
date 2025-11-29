@@ -176,15 +176,6 @@ class RegenCoolingSolver:
 
                 # 1. Enthalpy Rise
                 # Heat is transferred over the TRUE surface area of the spiral channel.
-                # However, our heat flux q_flux is typically defined per unit AXIAL wall area in simple codes,
-                # OR per unit TRUE wall area.
-                # Let's trace it: q_flux = hg * (Tg - Tw). hg from Bartz is based on Axial Area?
-                # Actually Bartz gives hg per unit surface area.
-                # The surface area of the hot wall segment is:
-                # Area_seg_hot = (2 * pi * r * dx_axial)
-                # The total heat input is Q = q_flux * Area_seg_hot.
-                # The coolant travels dx_eff, but it absorbs the heat from that axial segment.
-                # So we use Area_seg_hot for Q calculation.
 
                 perimeter_chamber = 2 * np.pi * r_work[i]
                 area_segment = perimeter_chamber * dx_axial

@@ -2,7 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import CoolProp.CoolProp as CP
 from matplotlib.colors import LogNorm
-
+from typing import Union, List, Dict, TYPE_CHECKING
+# Prevent circular import during runtime
+if TYPE_CHECKING:
+    from src.engine import EngineDesignResult
 
 def plot_n2o_t_rho_diagram(engine_result, fluid_name="NitrousOxide"):
     """
@@ -128,13 +131,30 @@ def plot_n2o_t_rho_diagram(engine_result, fluid_name="NitrousOxide"):
     plt.show()
 
 
-def plot_n2o_p_t_diagram(engine_result, fluid_name="NitrousOxide"):
+def plot_n2o_p_t_diagram(results: Union['EngineDesignResult', List['EngineDesignResult'], Dict[str, 'EngineDesignResult']], fluid_name="NitrousOxide"):
     """
-    Plots a Pressure-Temperature (P-T) diagram with Density background.
-    """
+    Plots a P-T diagram with multiple engine run paths.
 
-    # 1. Setup Phase Boundaries
-    # -------------------------
+    Args:
+        results: Can be one of:
+                 - Single EngineDesignResult
+                 - List of [EngineDesignResult]
+                 - Dictionary of {"Label": EngineDesignResult}
+        fluid_name: CoolProp fluid string
+    """
+    from rocket_engine.src.engine import EngineDesignResult
+    # --- Input Normalization ---
+    if isinstance(results, EngineDesignResult):
+        data_dict = {"Design Point": results}
+    elif isinstance(results, list):
+        data_dict = {f"Run {i}": res for i, res in enumerate(results)}
+    elif isinstance(results, dict):
+        data_dict = results
+    else:
+        raise ValueError("Results must be a Result object, List, or Dictionary.")
+
+    # 1. Setup Phase Boundaries (Background)
+    # --------------------------------------
     try:
         T_trip = CP.PropsSI('T_triple', fluid_name)
         T_crit = CP.PropsSI('T_critical', fluid_name)
@@ -144,99 +164,87 @@ def plot_n2o_p_t_diagram(engine_result, fluid_name="NitrousOxide"):
         T_crit = 309.52
         P_crit = 72.45e5
 
-    # Saturation Line (Vapor Pressure Curve)
-    # Valid from Triple Point to Critical Point
+    # Saturation Line
     T_sat = np.linspace(T_trip, T_crit - 0.1, 200)
     P_sat = np.array([CP.PropsSI('P', 'T', t, 'Q', 0, fluid_name) for t in T_sat])
 
-    # 2. Generate Background Density Grid
-    # -----------------------------------
-    # Span the plot range
-    T_min, T_max = 200, 500
-    P_min, P_max = 1e5, 120e5  # 1 bar to 120 bar
+    # 2. Background Density Grid
+    # --------------------------
+    fig, ax = plt.subplots(figsize=(12, 9))
 
-    resolution = 300
+    # Define bounds based on all results to ensure everything fits
+    all_T = []
+    all_P = []
+    for res in data_dict.values():
+        all_T.extend(res.cooling_data['T_coolant'])
+        all_P.extend(res.cooling_data['P_coolant'])
+
+    T_min, T_max = 200, max(350, np.max(all_T) + 10)
+    P_min, P_max = 1e5, max(80e5, np.max(all_P) + 10e5)
+
+    # Meshgrid
+    resolution = 100
     t_grid = np.linspace(T_min, T_max, resolution)
     p_grid = np.linspace(P_min, P_max, resolution)
     T_MESH, P_MESH = np.meshgrid(t_grid, p_grid)
 
-    # Calculate Density at every point (Rho = f(P,T))
-    # This is often faster than P=f(T,Rho)
-    # Using a loop since vectorization depends on CP version/backend
+    # Calc Density Grid (Loop for safety)
     Rho_grid = np.zeros_like(T_MESH)
-
     for i in range(resolution):
         for j in range(resolution):
             try:
-                # If below saturation curve, it's gas/liquid depending on T
-                # PropsSI handles single phase automatically given P,T
                 Rho_grid[i, j] = CP.PropsSI('D', 'T', t_grid[j], 'P', p_grid[i], fluid_name)
             except:
                 Rho_grid[i, j] = np.nan
 
-    # 3. Plotting
-    # -----------
-    fig, ax = plt.subplots(figsize=(12, 9))
-
-    # A. Background Density Contour
-    # Density varies from ~1 kg/m3 (gas) to ~1200 kg/m3 (liquid)
-    # Linear scale usually works fine for density color map
+    # Contour Plot
     levels = np.linspace(0, 1200, 50)
-
-    cf = ax.contourf(T_MESH, P_MESH / 1e5, Rho_grid, levels=levels, cmap='Spectral', alpha=0.8)
-
-    # Add contour lines for specific densities (Isochores)
-    cl = ax.contour(T_MESH, P_MESH / 1e5, Rho_grid, levels=[100, 300, 500, 700, 900, 1100],
-                    colors='k', linewidths=0.5, alpha=0.3)
-    ax.clabel(cl, fmt=lambda x: f'{x:.0f} kg/m3', inline=True, fontsize=8)
-
+    cf = ax.contourf(T_MESH, P_MESH / 1e5, Rho_grid, levels=levels, cmap='Spectral', alpha=0.5)
     cbar = plt.colorbar(cf, ax=ax, label='Fluid Density [kg/m$^3$]')
 
-    # B. Phase Lines
-    # Saturation Curve
-    ax.plot(T_sat, P_sat / 1e5, 'k-', linewidth=2.5, label='Saturation Line')
-
-    # Critical Point
+    # 3. Plot Phase Lines
+    ax.plot(T_sat, P_sat / 1e5, 'k-', linewidth=2, label='Saturation Line')
     ax.plot(T_crit, P_crit / 1e5, 'ko', markersize=8, label='Critical Point')
+    ax.axhline(P_crit / 1e5, color='k', linestyle=':', alpha=0.3)
+    ax.axvline(T_crit, color='k', linestyle=':', alpha=0.3)
 
-    # Critical Isobar and Isotherm (dashed)
-    ax.axhline(P_crit / 1e5, color='k', linestyle=':', alpha=0.5)
-    ax.axvline(T_crit, color='k', linestyle=':', alpha=0.5)
+    # 4. Plot Coolant Paths
+    # ---------------------
+    # Generate distinct colors
+    colors = plt.cm.turbo(np.linspace(0, 0.9, len(data_dict)))
 
-    # C. Coolant Path
-    cool = engine_result.cooling_data
-    path_T = cool['T_coolant']
-    path_P = cool['P_coolant'] / 1e5  # bar
+    for (label, res), color in zip(data_dict.items(), colors):
+        cool = res.cooling_data
+        path_T = cool['T_coolant']
+        path_P = cool['P_coolant'] / 1e5  # bar
 
-    # Plot Path
-    sc = ax.scatter(path_T, path_P, c='white', s=10, edgecolors='k', zorder=10, label='Cooling Path')
-    ax.plot(path_T, path_P, 'w--', linewidth=1.5)
+        # Line
+        ax.plot(path_T, path_P, linestyle='-', linewidth=2.5, color=color, label=label)
 
-    # Direction Arrows
-    ax.annotate('Inlet', xy=(path_T[0], path_P[0]), xytext=(path_T[0] - 5, path_P[0] + 5),
-                color='black', fontweight='bold', ha='center',
-                arrowprops=dict(facecolor='black', arrowstyle='->'))
+        # Markers
+        # Inlet = Circle
+        ax.scatter(path_T[0], path_P[0], s=80, facecolors=color, edgecolors='k', marker='o', zorder=10)
+        # Throat (approximate by max velocity? or just middle?)
+        # Let's just mark Inlet/Outlet to keep it clean
+        # Outlet = X
+        ax.scatter(path_T[-1], path_P[-1], s=80, c='k', marker='x', zorder=10)
 
-    ax.annotate('Outlet', xy=(path_T[-1], path_P[-1]), xytext=(path_T[-1] + 5, path_P[-1] - 5),
-                color='black', fontweight='bold', ha='center',
-                arrowprops=dict(facecolor='black', arrowstyle='->'))
-
-    # D. Styling
+    # 5. Styling
     ax.set_xlabel(r'Temperature $T$ [K]')
     ax.set_ylabel(r'Pressure $P$ [bar]')
-    ax.set_title(f'{fluid_name} P-T Phase Diagram (Background = Density)')
-
-    # Region Labels
-    ax.text(220, 100, "LIQUID", fontsize=14, fontweight='bold', alpha=0.3, color='blue')
-    ax.text(320, 20, "GAS", fontsize=14, fontweight='bold', alpha=0.3, color='red')
-    ax.text(320, 90, "SUPERCRITICAL", fontsize=14, fontweight='bold', alpha=0.3, color='purple')
-
-    ax.legend(loc='upper left')
+    ax.set_title(f'{fluid_name} Multi-Run Phase Diagram')
+    ax.legend(loc='upper left', framealpha=0.9)
     ax.grid(True, alpha=0.3, color='k', linestyle='--')
 
-    # Ensure limits cover the path
-    ax.set_ylim(0, max(110, np.max(path_P) * 1.1))
-    ax.set_xlim(200, max(350, np.max(path_T) * 1.05))
+    # Legend helper for markers
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='k', label='Inlet'),
+        Line2D([0], [0], marker='x', color='k', label='Outlet'),
+    ]
+    # Add these to the existing legend
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles=handles + legend_elements, labels=labels + ['Inlet', 'Outlet'], loc='upper left')
 
     plt.tight_layout()
     plt.show()
