@@ -16,6 +16,7 @@ from geometry.injector import SwirlInjectorSizer
 from rocket_engine.src.visualization_3d import plot_engine_3d, plot_coolant_channels_3d
 from utils.units import Units
 from visualization import plot_channel_cross_section, plot_channel_cross_section_radial
+from analysis.fluid_state import plot_n2o_t_rho_diagram, plot_n2o_p_t_diagram
 
 
 @dataclass
@@ -147,10 +148,10 @@ class LiquidEngine:
 
         # Auto-size for channel width and height, rib thickness and helix angle at throat
         channel_geo = chan_gen.define_by_throat_dimensions(
-            width_at_throat=1.0e-3,
-            rib_at_throat=0.6e-3,
-            height=0.75e-3,
-            helix_angle_deg=30.0
+            width_at_throat=1.2 * 1e-3,
+            rib_at_throat=0.6 * 1e-3,
+            height=0.75 * 1e-3,
+            helix_angle_deg=0.0
         )
 
         # 4d. Run Cooling Solver
@@ -160,11 +161,11 @@ class LiquidEngine:
 
         cooling_res = solver.solve(
             mdot_coolant_total=mdot_ox,
-            pin_coolant=100e5,
-            tin_coolant=290.0,
+            pin_coolant=99 * 1e5,   # Pa
+            tin_coolant=310.0,      # K
             T_gas_recovery=T_aw,
             h_gas=h_g,
-            mode='counter-flow'
+            mode='co-flow'
         )
 
         # Store Result
@@ -209,13 +210,12 @@ class LiquidEngine:
         base_name = f"{output_dir}/{cfg.engine_name.replace(' ', '_')}"
 
         # 1. Profile Data
-        # Ensure we write the actual physics arrays now!
         profile_data = {
             "Position X [mm]": geo.x_full,
             "Radius Y [mm]": geo.y_full,
-            "Mach Number": res.mach_numbers,  # <--- FIXED
-            "T_Gas_Recovery [K]": res.T_gas_recovery,  # <--- FIXED
-            "h_Gas [W/m2K]": res.h_gas,  # <--- ADDED
+            "Mach Number": res.mach_numbers,
+            "T_Gas_Recovery [K]": res.T_gas_recovery,
+            "h_Gas [W/m2K]": res.h_gas,
             "Channel Width [mm]": chan.channel_width * 1000,
             "Channel Height [mm]": chan.channel_height * 1000,
             "T_Wall_Hot [K]": cool['T_wall_hot'],
@@ -224,6 +224,7 @@ class LiquidEngine:
             "P_Coolant [bar]": cool['P_coolant'] / 1e5,
             "Heat Flux [MW/m2]": cool['q_flux'] / 1e6,
             "Coolant Velocity [m/s]": cool['velocity'],
+            "Coolant Density [kg/m3]": cool['density'],
             "Coolant Quality": cool['quality']
         }
 
@@ -276,6 +277,11 @@ class LiquidEngine:
         ax6.plot(xs * 1000, cooling_res['velocity'], 'k--', label="Velocity [m/s]")
         ax6.set_ylabel("Coolant Velocity [m/s]")
 
+        ax8 = ax5.twinx()
+        ax8.plot(xs*1000, cooling_res['density'], 'b:', label="Density")
+        ax8.set_ylabel("Density [kg/m3]")
+        ax8.spines["right"].set_position(("axes", 1.1))
+
         lines5, labels5 = ax5.get_legend_handles_labels()
         lines6, labels6 = ax6.get_legend_handles_labels()
         ax6.legend(lines5 + lines6, labels5 + labels6, loc='upper right')
@@ -283,6 +289,7 @@ class LiquidEngine:
         plt.tight_layout()
         plt.show()
 
+        '''
         # --- Visualize Throat Cross Section ---
         # Find index of throat (x closest to 0)
         idx_throat = np.abs(xs).argmin()
@@ -294,6 +301,7 @@ class LiquidEngine:
             closeout_thickness=0.001,
             sector_angle=360  # Change to 90 or 45 to zoom in
         )
+
         # --- 3D Visualization ---
         print("\nGenerating 3D Cutaway...")
         plot_engine_3d(
@@ -308,14 +316,14 @@ class LiquidEngine:
             self.last_result.channel_geometry,
             num_channels_to_show=30,  # Plot 5 adjacent channels
             resolution=50
-        )
+        )'''
 
-# ... (Main block remains same) ...
+
 
 # --- Execution Block (Example) ---
 if __name__ == "__main__":
     # Define constraints
-    conf = EngineConfig(
+    conf_1 = EngineConfig(
         engine_name="HOPPER E1-1A",
         fuel="Ethanol90",
         oxidizer="N2O",
@@ -328,13 +336,20 @@ if __name__ == "__main__":
     )
 
     # Instantiate and Run
-    engine = LiquidEngine(conf)
+    engine = LiquidEngine(conf_1)
     result = engine.design()
     engine.save_specification()
 
+    # Generate the T-Rho Plot
+    print("Generating Fluid State Diagram...")
+    plot_n2o_t_rho_diagram(result)
+    print("Generating P-T Diagram...")
+    plot_n2o_p_t_diagram(result)
 
 
+
+    '''
     # Sizing Injector
     inj_sizer = SwirlInjectorSizer(result.massflow_total, p_drop=5e5, n_elements=5, propellant_density=800)
     inj_geo = inj_sizer.calculate()
-    print(f"Injector Sizing: Orifice={inj_geo.orifice_radius:.2f}mm")
+    print(f"Injector Sizing: Orifice={inj_geo.orifice_radius:.2f}mm")'''

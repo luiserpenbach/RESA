@@ -74,7 +74,8 @@ class RegenCoolingSolver:
             "T_wall_cold": np.zeros(N),
             "q_flux": np.zeros(N),
             "velocity": np.zeros(N),
-            "quality": np.zeros(N)
+            "quality": np.zeros(N),
+            "density": np.zeros(N)
         }
 
         # 2. Setup Initial State (At Coolant Inlet)
@@ -204,6 +205,8 @@ class RegenCoolingSolver:
             res["T_wall_cold"][i] = Twc
             res["q_flux"][i] = q_flux
             res["velocity"][i] = velocity
+            res["density"][i] = rho
+
             try:
                 res["quality"][i] = CP.PropsSI('Q', 'H', current_H, 'P', current_P, self.fluid)
             except:
