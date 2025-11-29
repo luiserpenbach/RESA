@@ -48,6 +48,9 @@ class RegenCoolingSolver:
             # Flip Gas Boundary Conditions (must match physical location of coolant)
             Tg_work = np.flip(T_gas_recovery)
             hg_work = np.flip(h_gas)
+
+            # Flip helix angle
+            alpha_work = np.flip(self.geo.helix_angle)
         else:
             # Co-Flow: Use as is
             x_work = self.geo.x_contour
@@ -59,6 +62,8 @@ class RegenCoolingSolver:
 
             Tg_work = T_gas_recovery
             hg_work = h_gas
+
+            alpha_work = self.geo.helix_angle
 
         # 1. Initialize Result Arrays
         N = self.num_stations
@@ -160,11 +165,28 @@ class RegenCoolingSolver:
             # E. Advance to Next Station
             if i < N - 1:
                 # Distance to next station
-                dx = abs(x_work[i + 1] - x_work[i])
+                dx_axial = abs(x_work[i + 1] - x_work[i])
 
-                # 1. Enthalpy Rise (Heat Addition)
+                # Effective Path Length for Spiral
+                # dL = dx / cos(alpha)
+                # Use average angle between stations for precision
+                avg_alpha = 0.5 * (alpha_work[i] + alpha_work[i + 1])
+                dx_eff = dx_axial / np.cos(avg_alpha)
+
+                # 1. Enthalpy Rise
+                # Heat is transferred over the TRUE surface area of the spiral channel.
+                # However, our heat flux q_flux is typically defined per unit AXIAL wall area in simple codes,
+                # OR per unit TRUE wall area.
+                # Let's trace it: q_flux = hg * (Tg - Tw). hg from Bartz is based on Axial Area?
+                # Actually Bartz gives hg per unit surface area.
+                # The surface area of the hot wall segment is:
+                # Area_seg_hot = (2 * pi * r * dx_axial)
+                # The total heat input is Q = q_flux * Area_seg_hot.
+                # The coolant travels dx_eff, but it absorbs the heat from that axial segment.
+                # So we use Area_seg_hot for Q calculation.
+
                 perimeter_chamber = 2 * np.pi * r_work[i]
-                area_segment = perimeter_chamber * dx
+                area_segment = perimeter_chamber * dx_axial
                 q_total_segment = q_flux * area_segment / num_channels
 
                 delta_H = q_total_segment / mdot_channel
@@ -172,7 +194,7 @@ class RegenCoolingSolver:
 
                 # 2. Pressure Drop (Friction)
                 f = self._friction_factor(Re, self.geo.roughness, D_h)
-                dp_friction = f * (dx / D_h) * (0.5 * rho * velocity ** 2)
+                dp_friction = f * (dx_eff / D_h) * (0.5 * rho * velocity ** 2)
                 current_P -= dp_friction
 
             # Record
@@ -196,10 +218,37 @@ class RegenCoolingSolver:
         return res
 
     def _friction_factor(self, Re, roughness, Dh):
-        if Re < 2000: return 64.0 / Re
-        rel_rough = roughness / Dh
-        # Avoid log(0)
-        if rel_rough <= 0 and Re > 0:
-            return 0.3164 * Re ** -0.25  # Blasius for smooth pipes
+        """
+        Calculates Darcy Friction Factor using the Goudar-Sonnad approximation.
+        This provides a higher accuracy solution to the Colebrook-White equation
+        compared to Haaland or Swamee-Jain.
+        """
+        # Laminar flow
+        if np.any(Re < 2000):
+            # Handle arrays or scalars
+            return np.where(Re < 2000, 64.0 / (Re + 1e-10), 0.0)  # Simplified scalar logic below is better
 
-        return (-1.8 * np.log10((rel_rough / 3.7) ** 1.11 + 6.9 / Re)) ** -2
+        if np.ndim(Re) == 0 and Re < 2000:
+            return 64.0 / Re
+
+        # Goudar-Sonnad Constants
+        epsilon = roughness / Dh
+        a = 2.0 / np.log(10)
+        b = epsilon / 3.7
+        d = (np.log(10) * Re) / 5.02
+
+        # Intermediate terms
+        s = b * d + np.log(d)
+        q = s ** (s / (s + 1))
+        g = b * d + np.log(d / q)
+        z = np.log(q / g)
+
+        # Delta calculations for refinement
+        delta_la = (z * g) / (g + 1)
+        delta_cfa = delta_la * (1 + (z / 2) / ((g + 1) ** 2 + (z / 3) * (2 * g - 1)))
+
+        # Final calculation: 1/sqrt(f) = a * [ln(d/q) + delta_cfa]
+        inv_sqrt_f = a * (np.log(d / q) + delta_cfa)
+        f = (1.0 / inv_sqrt_f) ** 2
+
+        return f

@@ -93,6 +93,7 @@ class LiquidEngine:
             L_star=self.cfg.L_star,
             bell_fraction=0.8,
             theta_convergent=30,
+            R_chamber=49,
             R_ent_factor=1.0
         )
 
@@ -142,13 +143,14 @@ class LiquidEngine:
         )
 
         # 4c. Setup Cooling Geometry
-        chan_gen = ChannelGeometryGenerator(x_contour=xs, y_contour=ys, wall_thickness=0.5e-3)
+        chan_gen = ChannelGeometryGenerator(x_contour=xs, y_contour=ys, wall_thickness=0.5e-3, roughness=20e-6)
 
-        # Auto-size for 1.5mm width / 1mm rib at throat
+        # Auto-size for channel width and height, rib thickness and helix angle at throat
         channel_geo = chan_gen.define_by_throat_dimensions(
             width_at_throat=1.0e-3,
             rib_at_throat=0.6e-3,
-            height=0.75e-3
+            height=0.75e-3,
+            helix_angle_deg=30.0
         )
 
         # 4d. Run Cooling Solver
@@ -167,15 +169,20 @@ class LiquidEngine:
 
         # Store Result
         self.last_result = EngineDesignResult(
+            # Performance
             isp_vac=self.comb_data.isp_vac,
             thrust_vac=self.cfg.thrust_n,
             massflow_total=mdot_total,
+
+            # Chamber
             dt_mm=Rt_m * 2000,
             de_mm=Rt_m * 2000 * np.sqrt(eps_opt),
             length_mm=xs[-1] * 1000 - xs[0] * 1000,
             geometry=self.geo,
+
             channel_geometry=channel_geo,
             cooling_data=cooling_res,
+
             # --- Store Physics Arrays ---
             mach_numbers=machs,
             T_gas_recovery=T_aw,
@@ -225,28 +232,53 @@ class LiquidEngine:
         print(f"Saved Profile Data to {base_name}_profile.csv")
 
     def _plot_results(self, xs, ys, cooling_res):
-        fig, (ax1, ax3) = plt.subplots(2, 1, figsize=(10, 10))
+        # Increased figure size for 3 subplots
+        fig, (ax1, ax3, ax5) = plt.subplots(3, 1, figsize=(10, 15))
 
-        # Top: Geometry & Temps
+        # --- Top: Geometry & Temperatures ---
         ax1.plot(xs * 1000, ys * 1000, 'k-', linewidth=2, label="Wall")
         ax1.set_ylabel("Radius [mm]")
+        ax1.set_title("Chamber Geometry & Wall Temperatures")
         ax1.grid(True, alpha=0.3)
 
         ax2 = ax1.twinx()
         ax2.plot(xs * 1000, cooling_res['T_wall_hot'], 'r-', label="T_HotWall")
         ax2.plot(xs * 1000, cooling_res['T_coolant'], 'b--', label="T_Coolant")
         ax2.set_ylabel("Temperature [K]")
-        ax2.legend(loc='upper right')
 
-        # Bottom: Mach & Heat Flux
+        # Combine legends
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+
+        # --- Middle: Mach & Heat Flux ---
         ax3.plot(xs * 1000, self.last_result.mach_numbers, 'g-', label="Mach")
         ax3.set_ylabel("Mach Number")
-        ax3.set_xlabel("Axial Position [mm]")
+        ax3.set_title("Gas Dynamics & Heat Flux")
         ax3.grid(True)
 
         ax4 = ax3.twinx()
         ax4.plot(xs * 1000, cooling_res['q_flux'] / 1e6, 'm-', label="Heat Flux [MW/m2]")
         ax4.set_ylabel("Heat Flux [MW/m2]")
+
+        lines3, labels3 = ax3.get_legend_handles_labels()
+        lines4, labels4 = ax4.get_legend_handles_labels()
+        ax4.legend(lines3 + lines4, labels3 + labels4, loc='upper right')
+
+        # --- Bottom: Coolant Pressure & Velocity ---
+        ax5.plot(xs * 1000, cooling_res['P_coolant'] / 1e5, 'c-', label="Pressure [bar]")
+        ax5.set_ylabel("Coolant Pressure [bar]")
+        ax5.set_xlabel("Axial Position [mm]")
+        ax5.set_title("Coolant Hydraulics")
+        ax5.grid(True)
+
+        ax6 = ax5.twinx()
+        ax6.plot(xs * 1000, cooling_res['velocity'], 'k--', label="Velocity [m/s]")
+        ax6.set_ylabel("Coolant Velocity [m/s]")
+
+        lines5, labels5 = ax5.get_legend_handles_labels()
+        lines6, labels6 = ax6.get_legend_handles_labels()
+        ax6.legend(lines5 + lines6, labels5 + labels6, loc='upper right')
 
         plt.tight_layout()
         plt.show()
@@ -292,7 +324,7 @@ if __name__ == "__main__":
         mr=4.0,
         p_exit_bar=1.013,
         L_star=1200,
-        contraction_ratio=10.0
+        contraction_ratio=12.0
     )
 
     # Instantiate and Run

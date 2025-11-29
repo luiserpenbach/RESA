@@ -2,8 +2,6 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Literal
 
-from fluids.friction import roughness_Farshad
-
 
 @dataclass
 class CoolingChannelGeometry:
@@ -18,6 +16,13 @@ class CoolingChannelGeometry:
     wall_thickness: np.ndarray  # [m] (Can vary, usually constant)
     roughness: float
     number_of_channels: int
+
+    helix_angle: np.ndarray = None  # [rad] Angle vs Axial direction (0 = Axial, 90 = Hoop)
+
+    def __post_init__(self):
+        # Default helix angle to 0 if not provided
+        if self.helix_angle is None:
+            self.helix_angle = np.zeros_like(self.x_contour)
 
     @property
     def hydraulic_diameter(self) -> np.ndarray:
@@ -45,7 +50,8 @@ class ChannelGeometryGenerator:
     def __init__(self,
                  x_contour: np.ndarray,
                  y_contour: np.ndarray,
-                 wall_thickness: float = 0.001):
+                 wall_thickness: float = 0.001,
+                 roughness: float = 10e-6):
         """
         Args:
             x_contour: Axial positions [m]
@@ -55,48 +61,52 @@ class ChannelGeometryGenerator:
         self.xs = x_contour
         self.ys = y_contour
         self.t_wall = wall_thickness
+        self.roughness = roughness
 
         # Radius of the channel bottom (interface between hot wall and coolant)
-        # Note: Usually channels are milled *into* the liner from the outside,
-        # or printed.
         # If milled from outside: Channel Bottom Radius = Inner Radius + Wall Thickness
         self.r_channel_base = self.ys + self.t_wall
 
     def generate_constant_rib(self,
                               num_channels: int,
                               rib_width: float,
-                              channel_height: float) -> CoolingChannelGeometry:
+                              channel_height: float,
+                              helix_angle_deg: float = 0.0) -> CoolingChannelGeometry:
         """
-        Generates geometry where Rib Width is constant. Channel width varies with radius.
+        Generates geometry with constant rib width. Supports spiral channels.
 
         Args:
             num_channels: Total number of channels
-            rib_width: Width of the land between channels [m]
-            channel_height: Height of the channel [m] (Constant)
-
+            rib_width: Width of the wall between channels [m]
+            channel_height: Radial height of the channel [m] (Constant)
+            helix_angle_deg: Constant spiral angle in degrees (0 = axial flow)
         Returns:
             CoolingChannelGeometry object
         """
         N = num_channels
         w_rib = rib_width
 
-        # Circumference at the channel base = 2 * pi * r
-        circumference = 2 * np.pi * self.r_channel_base
+        # Convert angle to radians
+        alpha = np.radians(helix_angle_deg)
 
-        # Total available width for channels = Circumference - (N * RibWidth)
-        total_channel_width_avail = circumference - (N * w_rib)
+        # Effective circumference available for channels cuts perpendicular to flow
+        # Circ_normal = 2 * pi * r * cos(alpha)
+        # However, usually we define width/rib in the Normal plane (milled cross section).
+        # Total Circumference = N * (w_ch / cos(alpha) + w_rib / cos(alpha)) ?
+        # Standard approach: The pitch P = 2*pi*r / N is the Hoop Pitch.
+        # Normal Pitch P_n = P * cos(alpha)
+        # P_n = w_ch_normal + w_rib_normal
+        # w_ch_normal = (2*pi*r / N) * cos(alpha) - w_rib_normal
 
-        # Local Channel Width
-        w_channels = total_channel_width_avail / N
+        circumference_hoop = 2 * np.pi * self.r_channel_base
+        pitch_hoop = circumference_hoop / N
+        pitch_normal = pitch_hoop * np.cos(alpha)
+        w_channels = pitch_normal - w_rib
 
-        # Validation: Check for negative widths (choking)
-        min_width = np.min(w_channels)
-        if min_width < 0:
-            # Find where it fails
-            idx_fail = np.argmin(w_channels)
-            r_fail = self.r_channel_base[idx_fail]
-            raise ValueError(f"Geometry Error: Channels overlap at R={r_fail * 1000:.1f}mm. "
-                             f"Too many channels ({N}) or ribs too wide ({w_rib * 1000}mm).")
+        # Validation
+        if np.min(w_channels) < 0:
+            idx = np.argmin(w_channels)
+            raise ValueError(f"Geometry Error: Channels overlap at R={self.r_channel_base[idx] * 1000:.1f}mm.")
 
         return CoolingChannelGeometry(
             x_contour=self.xs,
@@ -105,8 +115,9 @@ class ChannelGeometryGenerator:
             channel_height=np.full_like(self.xs, channel_height),
             rib_width=np.full_like(self.xs, w_rib),
             wall_thickness=np.full_like(self.xs, self.t_wall),
-            roughness=10,
-            number_of_channels=N
+            roughness=self.roughness,
+            number_of_channels=N,
+            helix_angle = np.full_like(self.xs, alpha)
         )
 
     def calculate_max_channels(self,
@@ -130,26 +141,26 @@ class ChannelGeometryGenerator:
     def define_by_throat_dimensions(self,
                                     width_at_throat: float,
                                     rib_at_throat: float,
-                                    height: float) -> CoolingChannelGeometry:
+                                    height: float,
+                                    helix_angle_deg: float = 0.0) -> CoolingChannelGeometry:
         """
-        Automatically calculates N based on desired dimensions at the throat,
-        then generates the full contour maintaining constant rib width.
+        Auto-calculates N based on throat dimensions, including helix angle effect.
         """
-        # Find Throat Radius (channel base)
-        r_throat_base = np.min(self.r_channel_base)
+        r_throat = np.min(self.r_channel_base)
 
-        # Calculate optimal N
-        # 2*pi*R = N * (w + rib)
-        # N = 2*pi*R / (w + rib)
-        circ_throat = 2 * np.pi * r_throat_base
-        pitch = width_at_throat + rib_at_throat
+        # Pitch Normal = Width + Rib
+        pitch_normal = width_at_throat + rib_at_throat
 
-        num_channels = int(np.round(circ_throat / pitch))
+        # Pitch Hoop = Pitch Normal / cos(alpha)
+        alpha = np.radians(helix_angle_deg)
+        pitch_hoop = pitch_normal / np.cos(alpha)
 
-        print(f"Auto-calculated Channels: {num_channels} (based on Throat R={r_throat_base * 1000:.1f}mm)")
+        circ_throat = 2 * np.pi * r_throat
+        num_channels = int(np.round(circ_throat / pitch_hoop))
 
-        # Now generate using that N
-        return self.generate_constant_rib(num_channels, rib_at_throat, height)
+        print(f"Auto-calculated Channels: {num_channels} (Throat R={r_throat * 1000:.1f}mm, Angle={helix_angle_deg}°)")
+
+        return self.generate_constant_rib(num_channels, rib_at_throat, height, helix_angle_deg)
 
     def define_variable_height(self,
                                base_geometry: CoolingChannelGeometry,

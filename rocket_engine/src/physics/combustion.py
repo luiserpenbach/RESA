@@ -20,7 +20,16 @@ class CombustionPoint:
 class CEASolver:
     def __init__(self, fuel_name: str, oxidizer_name: str):
         self._setup_custom_fuels()
-        self.cea = CEA_Obj(oxName=oxidizer_name, fuelName=fuel_name)
+        # Explicitly define units for the wrapper.
+        self.cea = CEA_Obj(
+            oxName=oxidizer_name,
+            fuelName=fuel_name,
+            cstar_units='m/s',
+            pressure_units='Bar',
+            temperature_units='K',
+            isp_units='sec',
+            specific_heat_units='J/kg-K'
+        )
 
     def _setup_custom_fuels(self):
         """Defines custom fuel blends for RocketCEA."""
@@ -55,7 +64,6 @@ class CEASolver:
         cstar_mps = self.cea.get_Cstar(Pc=pc_bar, MR=mr)
 
         # 2. Get Thermodynamic Properties
-        # FIX: Split the calls.
         # get_Chamber_MolWt_gamma returns (Mw, Gamma)
         M_w, gam = self.cea.get_Chamber_MolWt_gamma(Pc=pc_bar, MR=mr, eps=eps)
 
