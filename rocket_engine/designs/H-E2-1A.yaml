@@ -1,0 +1,42 @@
+meta:
+  engine_name: "Phoenix-1"
+  designer: "Luis"
+  version: "1.0"
+
+propulsion:
+  fuel: "Ethanol90"
+  oxidizer: "N2O"
+  thrust_n: 2200.0
+  chamber_pressure_bar: 25.0
+  mixture_ratio: 4.0
+  combustion_efficiency: 0.95
+
+nozzle:
+  expansion_ratio: 0.0        # 0 for optimal expansion
+  design_ambient_pressure: 1.013
+  L_star_mm: 1100.0
+  contraction_ratio: 10.0
+  convergent_angle: 30.0
+  bell_fraction: 0.8
+
+cooling:
+  coolant: "REFPROP::NitrousOxide"
+  mode: "counter-flow"
+  mass_fraction: 1.0          # 100% of propellant used for cooling
+
+  inlet:
+    pressure_bar: 60.0
+    temperature_k: 285.0
+
+  geometry:
+    channel_width_throat_mm: 1.0
+    channel_height_mm: 0.75
+    rib_width_throat_mm: 0.6
+    wall_thickness_mm: 0.5
+    roughness_microns: 5.0
+
+  material:
+    conductivity: 15.0        # Inconel 718 approx
+
+injector:
+  pressure_drop_bar: 5.0

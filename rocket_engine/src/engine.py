@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
+import yaml
 
 # Import Modules
 from src.geometry.nozzle import NozzleGenerator, NozzleGeometryData
@@ -57,6 +58,75 @@ class EngineConfig:
     coolant_p_in_bar: float = 98.0
     coolant_t_in_k: float = 290.0
     coolant_mass_fraction: float = 1.0
+
+    @classmethod
+    def from_yaml(cls, yaml_path: str):
+        """
+        Factory method to load config from a hierarchical YAML file.
+        """
+        if not os.path.exists(yaml_path):
+            raise FileNotFoundError(f"Config file not found: {yaml_path}")
+
+        with open(yaml_path, 'r') as f:
+            data = yaml.safe_load(f)
+
+        # Helper to safely get nested keys
+        def get(section, key, default=None):
+            return data.get(section, {}).get(key, default)
+
+        # Mapping Logic: YAML -> Dataclass
+        # We also handle unit conversions here (e.g., mm -> m)
+
+        # 1. Propulsion
+        prop = data.get('propulsion', {})
+        nozz = data.get('nozzle', {})
+        cool = data.get('cooling', {})
+        inj = data.get('injector', {})
+
+        # Cooling Geometry (YAML is in mm, Config needs meters)
+        geo = cool.get('geometry', {})
+        inlet = cool.get('inlet', {})
+
+        return cls(
+            # Meta
+            engine_name=data.get('meta', {}).get('engine_name', 'Unnamed Engine'),
+
+            # Propulsion
+            fuel=prop.get('fuel', 'Ethanol'),
+            oxidizer=prop.get('oxidizer', 'N2O'),
+            thrust_n=float(prop.get('thrust_n', 1000.0)),
+            pc_bar=float(prop.get('chamber_pressure_bar', 20.0)),
+            mr=float(prop.get('mixture_ratio', 1.0)),
+            eff_combustion=float(prop.get('combustion_efficiency', 0.95)),
+
+            # Nozzle
+            expansion_ratio=float(nozz.get('expansion_ratio', 0.0)),
+            p_exit_bar=float(nozz.get('design_ambient_pressure', 1.013)),
+            L_star=float(nozz.get('L_star_mm', 1000.0)),
+            contraction_ratio=float(nozz.get('contraction_ratio', 10.0)),
+            theta_convergent=float(nozz.get('convergent_angle', 45.0)),
+            bell_fraction=float(nozz.get('bell_fraction', 0.8)),
+
+            # Cooling System
+            coolant_name=cool.get('coolant', 'REFPROP::NitrousOxide'),
+            cooling_mode=cool.get('mode', 'counter-flow'),
+            coolant_mass_fraction=float(cool.get('mass_fraction', 1.0)),
+
+            coolant_p_in_bar=float(inlet.get('pressure_bar', 50.0)),
+            coolant_t_in_k=float(inlet.get('temperature_k', 290.0)),
+
+            # Geometry (Convert mm to m)
+            channel_width_throat=float(geo.get('channel_width_throat_mm', 1.0)) / 1000.0,
+            channel_height=float(geo.get('channel_height_mm', 1.0)) / 1000.0,
+            rib_width_throat=float(geo.get('rib_width_throat_mm', 1.0)) / 1000.0,
+            wall_thickness=float(geo.get('wall_thickness_mm', 1.0)) / 1000.0,
+            wall_roughness=float(geo.get('roughness_microns', 5.0)) * 1e-6,
+
+            wall_conductivity=float(cool.get('material', {}).get('conductivity', 15.0)),
+
+            # Injector
+            injector_pressure_drop_bar=float(inj.get('pressure_drop_bar', 5.0))
+        )
 
 
 @dataclass
@@ -307,6 +377,115 @@ class LiquidEngine:
             self._plot_results(xs, ys, cooling_res, title=f"Analysis: {label}")
 
         return result
+
+    def analyze_oxidizer_throttle(self,
+                                  ox_flow_fraction: float,
+                                  fuel_tank_pressure_bar: float = None,
+                                  fixed_fuel_flow: bool = False) -> EngineDesignResult:
+        """
+        Simulates the engine state when ONLY the Oxidizer flow is throttled.
+
+        Args:
+            ox_flow_fraction: Fraction of design oxidizer flow (e.g., 0.8 for 80%).
+            fuel_tank_pressure_bar: Upstream fuel pressure (used if fixed_fuel_flow=False).
+            fixed_fuel_flow: If True, assumes a Cavitating Venturi locks the fuel mass flow
+                             regardless of Pc changes.
+        """
+        from scipy.optimize import brentq
+
+        if self.geo is None:
+            raise RuntimeError("Run design() first.")
+
+        mode_str = "FIXED Fuel (Venturi)" if fixed_fuel_flow else "PASSIVE Fuel (Hydraulic)"
+        print(f"\n>>> RUNNING OXIDIZER THROTTLE ({mode_str}, Factor={ox_flow_fraction:.2f})")
+
+        # 1. Retrieve Design Point Baseline
+        # We assume the design run stored in self.last_result is the 100% baseline
+        # Ideally, we should re-run the design point logic to be stateless,
+        # but here we just need the mass flow values.
+
+        # Recover Design Mass Flows
+        comb_des = self.cea.run(self.cfg.pc_bar, self.cfg.mr, eps=self.geo.y_bell[-1] / self.geo.y_throat_div[0])
+        cstar_des = comb_des.cstar * self.cfg.eff_combustion
+        isp_des = comb_des.isp_opt * self.cfg.eff_combustion
+
+        mdot_total_des = self.cfg.thrust_n / (isp_des * Units.g0)
+        mdot_ox_des = mdot_total_des * (self.cfg.mr / (1 + self.cfg.mr))
+        mdot_fu_des = mdot_total_des - mdot_ox_des
+
+        # 2. Establish Fuel Behavior
+        if not fixed_fuel_flow:
+            # Hydraulic Mode: Flow depends on Pc
+            Pc_des = self.cfg.pc_bar * 1e5
+            if fuel_tank_pressure_bar:
+                P_tank_fu = fuel_tank_pressure_bar * 1e5
+            else:
+                P_tank_fu = Pc_des * 1.2  # Default 20% drop
+
+            dP_fu_des = P_tank_fu - Pc_des
+            if dP_fu_des <= 0: raise ValueError("Fuel Tank Pressure must be > Design Chamber Pressure")
+            K_fuel = mdot_fu_des / np.sqrt(dP_fu_des)
+
+        # 3. Define Target Flows
+        mdot_ox_target = mdot_ox_des * ox_flow_fraction
+
+        # 4. Geometry Constants
+        Rt = self.geo.y_throat_div[0] / 1000.0
+        At = np.pi * Rt ** 2
+        eps_geo = (self.geo.y_bell[-1] / 1000.0 / Rt) ** 2
+
+        # 5. Define Equilibrium Residual Function
+        def residual(Pc_guess_bar):
+            Pc_pa = Pc_guess_bar * 1e5
+
+            # A. Calculate Fuel Flow
+            if fixed_fuel_flow:
+                mdot_fu = mdot_fu_des  # Constant
+            else:
+                # Hydraulic
+                if P_tank_fu <= Pc_pa:
+                    mdot_fu = 0.0
+                else:
+                    mdot_fu = K_fuel * np.sqrt(P_tank_fu - Pc_pa)
+
+            # B. Determine Mixture Ratio
+            if mdot_fu <= 0: return 1.0  # Error state
+            mr = mdot_ox_target / mdot_fu
+
+            # C. Physics (Gas Generation)
+            # C* drops significantly if MR shifts far from optimum
+            comb = self.cea.run(Pc_guess_bar, mr, eps=eps_geo)
+            cstar = comb.cstar * self.cfg.eff_combustion
+
+            # D. Physics (Nozzle Exhaust)
+            # Pc_required = (m_total * c*) / At
+            mdot_total = mdot_ox_target + mdot_fu
+            Pc_required_pa = (mdot_total * cstar) / At
+
+            return (Pc_required_pa - Pc_pa) / 1e5
+
+        # 6. Solve for Pc
+        # Bracket: From 1 bar to 100 bar (safe range)
+        try:
+            pc_sol_bar = brentq(residual, 1.0, 150.0, xtol=1e-3)
+        except ValueError:
+            print("Warning: Could not find equilibrium Pc.")
+            pc_sol_bar = self.cfg.pc_bar * ox_flow_fraction
+
+        # 7. Finalize Result
+        Pc_pa = pc_sol_bar * 1e5
+
+        if fixed_fuel_flow:
+            mdot_fu_final = mdot_fu_des
+        else:
+            mdot_fu_final = K_fuel * np.sqrt(P_tank_fu - Pc_pa)
+
+        mr_final = mdot_ox_target / mdot_fu_final
+
+        print(f"   Equilibrium Pc:   {pc_sol_bar:.2f} bar")
+        print(f"   Resulting MR:     {mr_final:.2f}")
+
+        return self.analyze(pc_bar=pc_sol_bar, mr=mr_final, plot=False)
 
     def save_specification(self, output_dir: str = "output", tag: str = None):
         """

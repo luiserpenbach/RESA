@@ -5,36 +5,36 @@ from rocket_engine.src.engine import EngineConfig, LiquidEngine
 if __name__ == "__main__":
     # 1. Define Design Point
     conf = EngineConfig(
-        engine_name="HOPPER E1-1A",
-        fuel="Ethanol90",
+        engine_name="Demo-50N",
+        fuel="C2H6",
         oxidizer="N2O",
-        thrust_n=2200,
-        pc_bar=25,
-        mr=4.0,
+        thrust_n=50,
+        pc_bar=7,
+        mr=6.0,
         p_exit_bar=1.013,
-        contraction_ratio=12,
-        expansion_ratio=0,
+        contraction_ratio=15,
+        expansion_ratio=40,
 
         # Geometry
-        channel_width_throat=1.0e-3,
-        channel_height=0.75e-3,
-        rib_width_throat=0.6e-3,
-        wall_thickness=0.5e-3,
+        channel_width_throat=0.5e-3,
+        channel_height=0.5e-3,
+        rib_width_throat=0.5e-3,
+        wall_thickness=0.4e-3,
 
         # Coolant
-        coolant_p_in_bar=80.0
+        coolant_p_in_bar=50.0
     )
 
     engine = LiquidEngine(conf)
 
     # 2. Design Point Run
     res_design = engine.design(plot=True)
-    engine.save_specification(output_dir="output-H_E2_1A", tag="nominal")
+    engine.save_specification(output_dir="output-demo50N", tag="nominal")
     #engine.analyze_transient(duration=0.5)
 
     # 3. Off-Design Runs
     # Case A: Throttled (Low Pc, Low Flow)
-    res_throttle = engine.analyze(pc_bar=15.0, mr=3.5, plot=False)
+    res_throttle = engine.analyze(pc_bar=4.0, mr=4, plot=False)
 
     # 4. Compare in Phase Diagram
     print("\nGenerating Multi-Run Phase Diagram...")
