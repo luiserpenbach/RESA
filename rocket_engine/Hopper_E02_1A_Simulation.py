@@ -17,20 +17,22 @@ if __name__ == "__main__":
         pc_bar=25.0,
         mr=4.0,
         p_exit_bar=1.013,
+        eff_combustion=0.94,
 
         # Chamber geometry
-
-        L_star=1100.0,
+        throat_diameter=28.06e-3,
+        L_star=1200.0,
         contraction_ratio=12.0,
         expansion_ratio=4.1,
         theta_convergent=35.0,
+
 
         # Cooling Geometry
         channel_width_throat=1.0e-3,
         channel_height=0.75e-3,
         rib_width_throat=0.6e-3,
         wall_thickness=0.5e-3,
-        wall_roughness=20e-6,
+        wall_roughness=100e-6,
 
         # Coolant State
         coolant_name="REFPROP::NitrousOxide",
@@ -50,6 +52,7 @@ if __name__ == "__main__":
     print("\n--- [1] Running Design Point Sizing ---")
     res_design = engine.design(plot=False)
     engine.save_specification(output_dir=data_output_dir, tag="design")
+    #engine.export_geometry("output/output_geometry_H-E2-1A-V1.0")
 
     print(f"   >> Design Thrust: {res_design.thrust_sea:.1f} N (Sea-Level)")
     print(f"   >> SL Isp:    {res_design.isp_sea:.1f} s")

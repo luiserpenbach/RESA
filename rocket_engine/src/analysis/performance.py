@@ -12,7 +12,7 @@ def plot_cstar_contour(cea_solver: CEASolver,
                        pc_range: tuple = (10.0, 100.0),
                        resolution: int = 50,
                        trajectory: list = None,
-                        envelope: dict = None,
+                       envelope: dict = None,
                        show: bool = True):
     """
     Plots a contour map of C* over Mixture Ratio and Chamber Pressure, able to overlay a throttle trajectory
@@ -40,7 +40,7 @@ def plot_cstar_contour(cea_solver: CEASolver,
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Contour Fill
-    cf = ax.contourf(MR, PC, CSTAR, levels=50, cmap='viridis')
+    cf = ax.contourf(MR, PC, CSTAR, levels=50, cmap="plasma")
     cbar = plt.colorbar(cf, ax=ax, label='Characteristic Velocity c* [m/s]')
     # Contour Lines
     cs = ax.contour(MR, PC, CSTAR, levels=15, colors='k', linewidths=0.5, alpha=0.5)
@@ -63,16 +63,16 @@ def plot_cstar_contour(cea_solver: CEASolver,
         ax.add_patch(rect)
 
         # Add corner labels
-        ax.text(mr_min, pc_max + 1, "Limit", color='cyan', fontsize=9, fontweight='bold')
+        ax.text(mr_min, pc_max + 1, "Operating Limit", color='black', fontsize=9, fontweight='bold')
 
     # 4. Plot Nominal Point Markers
     ax.axvline(nominal_mr, color='white', linestyle='--', linewidth=1.5, label='Nominal MR')
     ax.axhline(nominal_pc_bar, color='white', linestyle=':', linewidth=1.5, label='Nominal Pc')
-    ax.scatter(nominal_mr, nominal_pc_bar, color='red', s=100, marker='X', zorder=10, label='Operating Point')
+    ax.scatter(nominal_mr, nominal_pc_bar, color='red', s=50, marker='X', zorder=10, label='Nom. Operating Point')
 
     # Calculate Nominal C* for label
     nom_res = cea_solver.run(nominal_pc_bar, nominal_mr, eps=10.0)
-    ax.text(nominal_mr + 0.1, nominal_pc_bar + 1, f"c* = {nom_res.cstar:.1f} m/s",
+    ax.text(nominal_mr + 0.1, nominal_pc_bar-1, f"c* = {nom_res.cstar:.1f} m/s",
             color='white', fontweight='bold')
 
     # 5. Plot Trajectory if given
@@ -80,10 +80,10 @@ def plot_cstar_contour(cea_solver: CEASolver,
         t_mr = [p['mr'] for p in trajectory]
         t_pc = [p['pc'] for p in trajectory]
         # Draw path
-        ax.plot(t_mr, t_pc, 'w-', linewidth=2.5, alpha=0.8, label='Throttle Path')
+        ax.plot(t_mr, t_pc, 'w-', linewidth=2.5, alpha=0.8, label='Ox-Throttle Path')
         ax.scatter(t_mr, t_pc, color='black', s=30, alpha=0.8)
         # Annotate Thrust at each point
-        # We skip every other point if there are too many (>15) to avoid clutter
+        # Skip every other point if there are too many (>15) to avoid clutter
         step = 2 if len(trajectory) > 15 else 1
         # Arrows to show direction (High Pc -> Low Pc)
         # Assuming trajectory is ordered (e.g. 100% -> 40%)
@@ -95,14 +95,14 @@ def plot_cstar_contour(cea_solver: CEASolver,
             throttle_pct = p.get('pct', 0.0)
 
             # Format text: "1500 N (70%)"
-            label_txt = f"{thrust:.0f} N"
+            label_txt = f"{thrust:.0f} N ({throttle_pct:.0f}%)"
 
             # Alternate label position (left/right) to reduce overlapping
-            offset_x = 10 if i % 2 == 0 else -10
-            ha = 'left' if i % 2 == 0 else 'right'
+            offset_x = 25#15 if i % 2 == 0 else -10
+            ha = 'right' #'left' if i % 2 == 0 else 'right'
             ax.annotate(label_txt,
                         xy=(mr_pt, pc_pt),
-                        xytext=(offset_x, 5),
+                        xytext=(offset_x, -1),
                         textcoords="offset points",
                         color='white',
                         fontsize=9,

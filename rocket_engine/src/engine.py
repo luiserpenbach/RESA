@@ -15,6 +15,8 @@ from src.physics.cooling import RegenCoolingSolver
 from src.utils.units import Units
 from src.analysis.fluid_state import plot_n2o_p_t_diagram
 
+from rocket_engine.src.physics.transients import TransientSimulation
+from rocket_engine.src.utils.export import export_contour_to_dxf
 from rocket_engine.src.visualization import plot_channel_cross_section_radial
 from rocket_engine.src.visualization_3d import plot_engine_3d, plot_coolant_channels_3d
 
@@ -31,6 +33,7 @@ class EngineConfig:
     mr: float
 
     # --- Nozzle / Chamber ---
+    throat_diameter: float = 0.0    # [m] Optional
     expansion_ratio: float = 0.0  # If 0, calc optimal for p_exit_bar
     p_exit_bar: float = 1.013
 
@@ -186,16 +189,31 @@ class LiquidEngine:
         # Rerun CEA with final Area Ratio
         comb_data = self.cea.run(self.cfg.pc_bar, self.cfg.mr, eps=eps_design)
 
-        # 2. Throat Sizing (The definition of "Design")
+        # 2. Sizing Logic (Thrust or Throat)
         cstar_real = comb_data.cstar * self.cfg.eff_combustion
-        isp_design = comb_data.isp_opt * self.cfg.eff_combustion  # Use optimal/target altitude Isp
+        isp_design = comb_data.isp_opt * self.cfg.eff_combustion  # Use target altitude Isp
 
-        # mdot = F / (Isp * g0)
-        mdot_total = self.cfg.thrust_n / (isp_design * Units.g0)
+        if self.cfg.throat_diameter > 0.001:
+            # Case A: Fixed Throat Diameter
+            print(f"   [Constraint] Using Fixed Throat Diameter: {self.cfg.throat_diameter * 1000:.2f} mm")
+            Rt_m = self.cfg.throat_diameter / 2.0
+            At_m2 = np.pi * Rt_m ** 2
 
-        # At = (mdot * cstar) / Pc
-        At_m2 = (mdot_total * cstar_real) / (self.cfg.pc_bar * 1e5)
-        Rt_m = np.sqrt(At_m2 / np.pi)
+            # Calculate Resulting Mass Flow & Thrust
+            # mdot = (Pc * At) / cstar
+            mdot_total = (self.cfg.pc_bar * 1e5 * At_m2) / cstar_real
+            thrust_new = mdot_total * isp_design * Units.g0
+
+            print(f"   Resulting Thrust: {thrust_new:.1f} N")
+
+        else:
+            # Case B: Fixed Thrust (Default)
+            print(f"   [Constraint] Sizing for Target Thrust: {self.cfg.thrust_n:.1f} N")
+            mdot_total = self.cfg.thrust_n / (isp_design * Units.g0)
+
+            # At = (mdot * cstar) / Pc
+            At_m2 = (mdot_total * cstar_real) / (self.cfg.pc_bar * 1e5)
+            Rt_m = np.sqrt(At_m2 / np.pi)
 
         print(f"   Design Mass Flow: {mdot_total:.3f} kg/s")
         print(f"   Throat Radius:    {Rt_m * 1000:.2f} mm")
@@ -622,6 +640,20 @@ class LiquidEngine:
         df_profile.to_csv(profile_file, index=False)
         print(f"Saved Profile Data: {profile_file}")
 
+    def export_geometry(self, output_dir: str = "output"):
+        """
+        Exports geometry files (DXF for contour, CSV for channels).
+        """
+        if not self.last_result:
+            print("Run design() first.")
+            return
+
+        os.makedirs(output_dir, exist_ok=True)
+        base_name = f"{output_dir}/{self.cfg.engine_name.replace(' ', '_')}"
+
+        # DXF Export
+        export_contour_to_dxf(self.last_result.geometry, f"{base_name}_contour.dxf")
+
     def _plot_results(self, xs, ys, cooling_res, title="Engine Analysis"):
         """
         Generates a 4-panel dashboard of the engine performance.
@@ -748,7 +780,6 @@ class LiquidEngine:
 
     def analyze_transient(self, duration=0.5):
         """Runs startup simulation."""
-        from src.physics.transients import TransientSimulation
 
         if not self.last_result:
             print("Run design() first.")
