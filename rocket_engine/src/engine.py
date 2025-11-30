@@ -487,6 +487,31 @@ class LiquidEngine:
 
         return self.analyze(pc_bar=pc_sol_bar, mr=mr_final, plot=False)
 
+    def generate_throttle_curve(self, start_pct=100, end_pct=40, steps=10, fixed_fuel=True):
+        """
+        Runs a sequence of throttle points and returns the trajectory data.
+        """
+        trajectory = []
+        print(f"\nGenerating Throttle Curve ({start_pct}% -> {end_pct}%)...")
+
+        for pct in np.linspace(start_pct, end_pct, steps):
+            # Run simulation
+            res = self.analyze_oxidizer_throttle(
+                ox_flow_fraction=pct / 100.0,
+                fixed_fuel_flow=fixed_fuel
+            )
+
+            # Record Point
+            point = {
+                'pc': res.pc_bar,
+                'mr': res.mr,
+                'pct': pct,
+                'thrust': res.thrust_sea
+            }
+            trajectory.append(point)
+
+        return trajectory
+
     def save_specification(self, output_dir: str = "output", tag: str = None):
         """
         Saves the current engine state (scalars and profiles) to CSV files.
