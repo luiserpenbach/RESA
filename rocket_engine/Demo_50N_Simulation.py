@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # 2. Design Point Run
     res_design = engine.design(plot=True)
-    engine.save_specification(output_dir="output-demo50N", tag="nominal")
+    engine.save_specification(output_dir="output/output-demo50N", tag="nominal")
     #engine.analyze_transient(duration=0.5)
 
     # 3. Off-Design Runs
