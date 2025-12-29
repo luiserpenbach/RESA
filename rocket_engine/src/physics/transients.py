@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.integrate import solve_ivp
-from src.components.feed_system import FluidLine, InjectorComponent
+from rocket_engine.src.components.feed_system import FluidLine, InjectorComponent
 
 
 class TransientSimulation:

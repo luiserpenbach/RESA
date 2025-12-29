@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import yaml
 
 # Import Modules
-from src.geometry.nozzle import NozzleGenerator, NozzleGeometryData
-from src.geometry.cooling import ChannelGeometryGenerator, CoolingChannelGeometry
-from src.physics.combustion import CEASolver
-from src.physics.fluid_flow import mach_from_area_ratio, get_expansion_ratio
-from src.physics.heat_transfer import calculate_bartz_coefficient, calculate_adiabatic_wall_temp
-from src.physics.cooling import RegenCoolingSolver
-from src.utils.units import Units
-from src.analysis.fluid_state import plot_n2o_p_t_diagram
+from rocket_engine.src.geometry.nozzle import NozzleGenerator, NozzleGeometryData
+from rocket_engine.src.geometry.cooling import ChannelGeometryGenerator, CoolingChannelGeometry
+from rocket_engine.src.physics.combustion import CEASolver
+from rocket_engine.src.physics.fluid_flow import mach_from_area_ratio, get_expansion_ratio
+from rocket_engine.src.physics.heat_transfer import calculate_bartz_coefficient, calculate_adiabatic_wall_temp
+from rocket_engine.src.physics.cooling import RegenCoolingSolver
+from rocket_engine.src.utils.units import Units
+from rocket_engine.src.analysis.fluid_state import plot_n2o_p_t_diagram
 
 from rocket_engine.src.physics.transients import TransientSimulation
 from rocket_engine.src.utils.export import export_contour_to_dxf
@@ -84,7 +84,6 @@ class EngineConfig:
         prop = data.get('propulsion', {})
         nozz = data.get('nozzle', {})
         cool = data.get('cooling', {})
-        inj = data.get('injector', {})
 
         # Cooling Geometry (YAML is in mm, Config needs meters)
         geo = cool.get('geometry', {})
@@ -98,13 +97,14 @@ class EngineConfig:
             fuel=prop.get('fuel', 'Ethanol'),
             oxidizer=prop.get('oxidizer', 'N2O'),
             thrust_n=float(prop.get('thrust_n', 1000.0)),
-            pc_bar=float(prop.get('chamber_pressure_bar', 20.0)),
-            mr=float(prop.get('mixture_ratio', 1.0)),
+            pc_bar=float(prop.get('pc_bar', 20.0)),
+            mr=float(prop.get('mixture_ratio', 5.0)),
             eff_combustion=float(prop.get('combustion_efficiency', 0.95)),
 
             # Nozzle
             expansion_ratio=float(nozz.get('expansion_ratio', 0.0)),
-            p_exit_bar=float(nozz.get('design_ambient_pressure', 1.013)),
+            throat_diameter=float(nozz.get('throat_diameter', 0.0)),
+            p_exit_bar=float(nozz.get('design_ambient_pressure_bar', 1.013)),
             L_star=float(nozz.get('L_star_mm', 1000.0)),
             contraction_ratio=float(nozz.get('contraction_ratio', 10.0)),
             theta_convergent=float(nozz.get('convergent_angle', 45.0)),
@@ -123,12 +123,10 @@ class EngineConfig:
             channel_height=float(geo.get('channel_height_mm', 1.0)) / 1000.0,
             rib_width_throat=float(geo.get('rib_width_throat_mm', 1.0)) / 1000.0,
             wall_thickness=float(geo.get('wall_thickness_mm', 1.0)) / 1000.0,
-            wall_roughness=float(geo.get('roughness_microns', 5.0)) * 1e-6,
+            wall_roughness=float(geo.get('roughness_microns', 10.0)) * 1e-6,
 
             wall_conductivity=float(cool.get('material', {}).get('conductivity', 15.0)),
 
-            # Injector
-            injector_pressure_drop_bar=float(inj.get('pressure_drop_bar', 5.0))
         )
 
 
@@ -529,6 +527,85 @@ class LiquidEngine:
             trajectory.append(point)
 
         return trajectory
+
+    def generate_throttle_table(self,
+                                start_pct: float = 100.0,
+                                end_pct: float = 40.0,
+                                steps: int = 10,
+                                fixed_fuel: bool = True,
+                                export_csv: str = None) -> pd.DataFrame:
+        """
+        Generates a detailed table of operating points across a throttle range.
+        Calculates Thrust, Pc, MR, Temperatures, and Performance at each step.
+
+        Args:
+            start_pct: Starting oxidizer throttle percentage (e.g. 100).
+            end_pct: Ending oxidizer throttle percentage (e.g. 40).
+            steps: Number of points to simulate.
+            fixed_fuel: True for Venturi (constant fuel), False for Orifice (hydraulic).
+            export_csv: Optional path to save the table (e.g. "output/throttle_table.csv").
+
+        Returns:
+            pandas.DataFrame containing the throttle schedule.
+        """
+        print(f"\n>>> GENERATING THROTTLE TABLE ({start_pct}% -> {end_pct}%)")
+
+        data_rows = []
+
+        # Create sweep array
+        percentages = np.linspace(start_pct, end_pct, steps)
+
+        for pct in percentages:
+            try:
+                # Run the Off-Design Analysis
+                res = self.analyze_oxidizer_throttle(
+                    ox_flow_fraction=pct / 100.0,
+                    fixed_fuel_flow=fixed_fuel
+                )
+
+                # Extract Key Metrics
+                # Accessing combustion data requires the previous fix to EngineDesignResult
+                t_comb = res.combustion_data.T_combustion if hasattr(res, 'combustion_data') else 0.0
+
+                row = {
+                    "Throttle Setting [%]": round(pct, 1),
+                    "Thrust Vac [N]": round(res.thrust_vac, 1),
+                    "Thrust SL [N]": round(res.thrust_sea, 1),
+                    "Chamber Pressure [bar]": round(res.pc_bar, 2),
+                    "Mixture Ratio (O/F)": round(res.mr, 2),
+                    "Mass Flow [kg/s]": round(res.massflow_total, 4),
+                    "Isp SL [s]": round(res.isp_sea, 1),
+                    "Combustion Temp [K]": round(t_comb, 1),
+                    "Max Wall Temp [K]": round(np.max(res.cooling_data['T_wall_hot']), 1),
+                    "Max Coolant Temp [K]": round(np.max(res.cooling_data['T_coolant']), 1),
+                    "Coolant dP [bar]": round(
+                        (np.max(res.cooling_data['P_coolant']) - np.min(res.cooling_data['P_coolant'])) / 1e5, 2),
+                    "Exit Mach": round(res.mach_numbers[-1], 2)
+                }
+                data_rows.append(row)
+
+            except Exception as e:
+                print(f"   [Error] Failed to converge at {pct}%: {e}")
+
+        # Create DataFrame
+        df = pd.DataFrame(data_rows)
+
+        # Display small preview
+        print("\n--- Throttle Table Preview ---")
+        print(df[["Throttle Setting [%]", "Thrust SL [N]", "Chamber Pressure [bar]", "Mixture Ratio (O/F)",
+                  "Max Wall Temp [K]"]].to_string(index=False))
+
+        # Export
+        if export_csv:
+            # Ensure directory exists
+            directory = os.path.dirname(export_csv)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+
+            df.to_csv(export_csv, index=False)
+            print(f"\nSaved Throttle Table to: {export_csv}")
+
+        return df
 
     def save_specification(self, output_dir: str = "output", tag: str = None):
         """

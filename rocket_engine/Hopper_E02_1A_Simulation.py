@@ -8,7 +8,9 @@ from rocket_engine.src.visualization import plot_channel_cross_section_radial
 from rocket_engine.src.visualization_3d import plot_coolant_channels_3d
 
 if __name__ == "__main__":
-    # 1. Define Design Point TODO: get from YAML config file
+    # 1. Define Design Point
+
+    #conf = EngineConfig.from_yaml("design_configs/H-E2-1A.yaml") PROBLEM WITH MIXTURE RATIO
     conf = EngineConfig(
         engine_name="HOPPER E1-1A",
         fuel="Ethanol90",
@@ -26,7 +28,6 @@ if __name__ == "__main__":
         expansion_ratio=4.1,
         theta_convergent=35.0,
 
-
         # Cooling Geometry
         channel_width_throat=1.0e-3,
         channel_height=0.75e-3,
@@ -37,7 +38,7 @@ if __name__ == "__main__":
         # Coolant State
         coolant_name="REFPROP::NitrousOxide",
         coolant_p_in_bar=97.0,
-        coolant_t_in_k=298.0,       # 25°C
+        coolant_t_in_k=298.0,  # 25°C
         cooling_mode='counter-flow'
     )
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     # 2. RUN DESIGN POINT
     # -------------------
     print("\n--- [1] Running Design Point Sizing ---")
-    res_design = engine.design(plot=False)
+    res_design = engine.design(plot=True)
     engine.save_specification(output_dir=data_output_dir, tag="design")
     #engine.export_geometry("output/output_geometry_H-E2-1A-V1.0")
 
@@ -80,7 +81,14 @@ if __name__ == "__main__":
     res_hot = engine.analyze(pc_bar=30.0, mr=5.0, plot=False)
     engine.save_specification(data_output_dir, tag="hot_case")
 
-
+    # Generate Table
+    df_throttle = engine.generate_throttle_table(
+        start_pct=100,
+        end_pct=45,
+        steps=10,
+        fixed_fuel=True,
+        export_csv=data_output_dir+"/ox_throttle_profile.csv"
+    )
 
 
     # 4. GENERATE VISUALIZATIONS
@@ -92,11 +100,11 @@ if __name__ == "__main__":
         "Throttled (80% Ox) ": res_throttle_75,
         "Throttled (50% Ox) ": res_throttle_50,
     }
-    #plot_n2o_p_t_diagram(results_map)
+    plot_n2o_p_t_diagram(results_map)
 
     # B. Detailed T-Rho Diagram for Design Point
     print("   -> Plotting T-Rho State Path...")
-    #plot_n2o_t_rho_diagram(res_design)
+    plot_n2o_t_rho_diagram(res_design)
 
     # C. Throat Cross-Section
     '''

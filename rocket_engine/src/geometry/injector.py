@@ -73,3 +73,5 @@ class SwirlInjectorSizer:
             cd=cd,
             film_thickness=t_film * 1000
         )
+
+    swinjector = InjectorGeometry(orifice_radius=2, )

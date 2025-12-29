@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
-from src.physics.fluid_dynamics import friction_factor_gs, flow_spi, flow_n2o_la_luna
+from rocket_engine.src.physics.fluid_dynamics import friction_factor_gs, flow_spi, flow_n2o_la_luna
 
 
 @dataclass

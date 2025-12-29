@@ -4,7 +4,7 @@ from scipy.optimize import root_scalar
 from typing import Literal, Dict, Any
 
 # Import geometry
-from src.geometry.cooling import CoolingChannelGeometry
+from rocket_engine.src.geometry.cooling import CoolingChannelGeometry
 
 
 class RegenCoolingSolver:

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Patch, Wedge
-from src.geometry.cooling import CoolingChannelGeometry
+from rocket_engine.src.geometry.cooling import CoolingChannelGeometry
 
 
 def plot_channel_cross_section(geo: CoolingChannelGeometry,

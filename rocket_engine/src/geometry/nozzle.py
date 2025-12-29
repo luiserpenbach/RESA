@@ -102,6 +102,8 @@ class NozzleGenerator:
         theta_e_deg = np.interp(self.epsilon, ar_data, te_80_deg)
         theta_n = np.radians(theta_n_deg)
         theta_e = np.radians(theta_e_deg)
+        print(f"Nozzle Entrance Angle: {theta_n_deg:.2f}")
+        print(f"Nozzle Exit Angle: {theta_e_deg:.2f}")
 
         L_cone = (self.Re - self.Rt) / np.tan(np.radians(15))
         L_nozzle = length_fraction * L_cone

@@ -1,0 +1,5 @@
+Test Run / ID,Thrust [N],MR [-],mf_ox [kg/s],mf_fuel [kg/s],p_c [bar],dp_inj_ox [bar],dp_inj_fuel [bar],cstar_ideal [m/s],cstar_meas [m/s],eta_cstar [-],I_sp [s],run_duration [s],Pass/Fail,Comment
+HF-001,1800,3.21,,,,,,,,,,,,
+HF-002,,,,,,,,,,,,,,
+HF-003,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,

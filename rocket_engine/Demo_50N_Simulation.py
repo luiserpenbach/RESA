@@ -16,13 +16,13 @@ if __name__ == "__main__":
         expansion_ratio=40,
 
         # Geometry
-        channel_width_throat=0.5e-3,
+        channel_width_throat=0.3e-3,
         channel_height=0.5e-3,
         rib_width_throat=0.5e-3,
         wall_thickness=0.4e-3,
 
         # Coolant
-        coolant_p_in_bar=50.0
+        coolant_p_in_bar=55.0
     )
 
     engine = LiquidEngine(conf)

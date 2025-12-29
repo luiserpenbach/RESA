@@ -2,12 +2,12 @@ import CoolProp.CoolProp as CP
 import numpy as np
 
 ### FLUID INITIALIZATION
-fluid = "REFPROP::N2"          # Nitrogen using REFPROP backend (most accurate)
-T_0 = 300.0                    # K
-p_0 = 100.0                     # bar (upstream)
-p_1 = 75.0                     # bar (downstream)
-orf_d = 8.5                    # mm → orifice diameter
-orf_cd = 0.7                   # discharge coefficient
+fluid = "REFPROP::N2O"          # Nitrogen using REFPROP backend (most accurate)
+T_0 = 25+273.15                    # K
+p_0 = 45.0                     # bar (upstream)
+p_1 = 25.0                     # bar (downstream)
+orf_d = 2.1                    # mm → orifice diameter
+orf_cd = 0.4                   # discharge coefficient
 
 
 
@@ -53,7 +53,7 @@ print(f"Mass flow rate (1 orifice)      : {m_dot:.6f} kg/s")
 
 # For Injector Configuration with multiple orifices
 num_inj_elements = 3
-num_ports_per_injector = 5
+num_ports_per_injector = 8
 total_orifices = num_inj_elements * num_ports_per_injector
 
 print("\n--- Results per single orifice ---")

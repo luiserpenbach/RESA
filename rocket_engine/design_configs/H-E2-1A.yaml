@@ -1,5 +1,5 @@
 meta:
-  engine_name: "Phoenix-1"
+  engine_name: "H-E2-1A"
   designer: "Luis"
   version: "1.0"
 
@@ -7,14 +7,15 @@ propulsion:
   fuel: "Ethanol90"
   oxidizer: "N2O"
   thrust_n: 2200.0
-  chamber_pressure_bar: 25.0
-  mixture_ratio: 4.0
+  pc_bar: 25.0
+  mr: 4.0
   combustion_efficiency: 0.95
 
 nozzle:
-  expansion_ratio: 4.1        # 0 for optimal expansion
-  design_ambient_pressure: 1.013
+  throat_diameter_mm: 28.06e-3
   L_star_mm: 1200.0
+  expansion_ratio: 4.1        # 0 for optimal expansion
+  design_ambient_pressure_bar: 1.013
   contraction_ratio: 12.0
   convergent_angle: 35.0
   bell_fraction: 0.9
@@ -37,6 +38,3 @@ cooling:
 
   material:
     conductivity: 15.0        # Inconel 718 approx
-# ignore injector for now
-injector:
-  pressure_drop_bar: 5.0

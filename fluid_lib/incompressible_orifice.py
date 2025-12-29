@@ -6,6 +6,7 @@ warnings.filterwarnings("ignore")
 
 
 def inc_mass_flow(
+        fluid,
         P_0,  # Tank pressure [Pa]
         T_0,  # Tank temperature [K]
         A_orf,  # orifice area [m²]
@@ -27,15 +28,12 @@ def inc_mass_flow(
         is_choked : Boolean indicating if flow is choked
         regime    : 'choked', 'subcritical', or 'two-phase'
     """
-
-    fluid = 'REFPROP::Ethanol'
-
     # Stagnation properties
     h_0 = PropsSI('H', 'P', P_0, 'T', T_0, fluid)  # Specific enthalpy [J/kg]
     s_0 = PropsSI('S', 'P', P_0, 'T', T_0, fluid)  # Specific entropy [J/kg·K]
     rho_0 = PropsSI('D', 'P', P_0, 'T', T_0, fluid)  # Density [kg/m³]
 
-    # Critical pressure ratio for N2O (approximately when vapor pressure is reached)
+    # Critical pressure ratio for
     # We'll find throat condition by isentropic expansion until minimum enthalpy (two-phase)
 
     # Try to find vapor quality at stagnation (usually saturated or slightly subcooled)
@@ -55,7 +53,7 @@ if __name__ == "__main__":
     P_0 = 100e5          # Pa
     P_1 = 60e5          # Pa
     T_0 = 290            # K
-    d_orf = 2.3e-3       # m  → 8.5 mm
+    d_orf = 2.0e-3       # m  → 8.5 mm
     A = np.pi * (d_orf / 2) ** 2
     Cd = 0.6
 
@@ -69,6 +67,7 @@ if __name__ == "__main__":
     print("Running back-pressure sweep for incompressible model...")
     for P_back in P_back_list:
         m_dot = inc_mass_flow(
+            fluid='REFPROP::Ethanol',
             P_0=P_0,
             T_0=T_0,
             A_orf=A,
@@ -106,9 +105,9 @@ if __name__ == "__main__":
     plt.show()
 
     # ------------------- Print single operating point -------------------
-    P_1 = 60e5
+    P_1 = 25e5
     m_dot= inc_mass_flow(
-        P_0=P_0, T_0=T_0, A_orf=A, C_d=Cd, P_1=P_1
+        fluid='REFPROP::Ethanol', P_0=P_0, T_0=T_0, A_orf=A, C_d=Cd, P_1=P_1
     )
 
     print("\n" + "="*60)

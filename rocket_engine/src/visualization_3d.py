@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from src.geometry.cooling import CoolingChannelGeometry
+from rocket_engine.src.geometry.cooling import CoolingChannelGeometry
 
 
 def plot_coolant_channels_3d(geo: CoolingChannelGeometry,
