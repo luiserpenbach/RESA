@@ -373,3 +373,314 @@ class PerformanceContourPlotter:
             include_plotlyjs=include_plotlyjs,
             full_html=full_html
         )
+
+
+class OperatingEnvelopePlotter:
+    """
+    Visualizes engine operating envelope with constraints.
+
+    Creates interactive plots showing:
+    - Valid operating region (Pc vs MR)
+    - Thermal constraint boundaries
+    - Stability limits
+    - Performance contours within envelope
+
+    Example:
+        plotter = OperatingEnvelopePlotter()
+        fig = plotter.create_figure(envelope_data)
+        fig.show()
+    """
+
+    def __init__(self, theme: Optional[PlotTheme] = None):
+        """Initialize with optional custom theme."""
+        self.theme = theme or DEFAULT_THEME
+
+    def create_figure(
+        self,
+        pc_values: np.ndarray,
+        mr_values: np.ndarray,
+        performance_grid: np.ndarray,
+        constraints: Optional[Dict[str, np.ndarray]] = None,
+        design_point: Optional[Dict[str, float]] = None,
+        title: str = "Engine Operating Envelope"
+    ) -> go.Figure:
+        """
+        Create operating envelope visualization.
+
+        Args:
+            pc_values: 1D array of chamber pressures [bar]
+            mr_values: 1D array of mixture ratios
+            performance_grid: 2D array of performance metric (e.g., Isp)
+            constraints: Dict with constraint boundaries:
+                - 'thermal_limit': 2D boolean array (True = valid)
+                - 'stability_limit': 2D boolean array
+                - 'pressure_limit': 2D boolean array
+            design_point: Optional dict with 'pc' and 'mr' keys
+            title: Plot title
+
+        Returns:
+            Plotly Figure with operating envelope
+        """
+        fig = go.Figure()
+
+        # ========== Performance Contour (base layer) ==========
+        fig.add_trace(go.Contour(
+            x=pc_values,
+            y=mr_values,
+            z=performance_grid,
+            colorscale='Viridis',
+            contours=dict(
+                showlabels=True,
+                labelfont=dict(size=10, color='white'),
+            ),
+            colorbar=dict(
+                title='Isp [s]',
+                titleside='right',
+                x=1.02
+            ),
+            name='Performance',
+            hovertemplate="Pc: %{x:.1f} bar<br>O/F: %{y:.2f}<br>Isp: %{z:.0f} s<extra></extra>"
+        ))
+
+        # ========== Constraint Boundaries ==========
+        if constraints:
+            # Thermal limit (typically max wall temperature)
+            if 'thermal_limit' in constraints:
+                thermal_valid = constraints['thermal_limit']
+                # Create boundary contour
+                fig.add_trace(go.Contour(
+                    x=pc_values,
+                    y=mr_values,
+                    z=thermal_valid.astype(float),
+                    contours=dict(
+                        start=0.5, end=0.5, size=0,
+                        coloring='none',
+                    ),
+                    line=dict(color=self.theme.danger, width=3, dash='dash'),
+                    showscale=False,
+                    name='Thermal Limit',
+                    hoverinfo='skip'
+                ))
+
+            # Stability limit (e.g., combustion stability)
+            if 'stability_limit' in constraints:
+                stability_valid = constraints['stability_limit']
+                fig.add_trace(go.Contour(
+                    x=pc_values,
+                    y=mr_values,
+                    z=stability_valid.astype(float),
+                    contours=dict(
+                        start=0.5, end=0.5, size=0,
+                        coloring='none',
+                    ),
+                    line=dict(color=self.theme.secondary, width=3, dash='dot'),
+                    showscale=False,
+                    name='Stability Limit',
+                    hoverinfo='skip'
+                ))
+
+            # Pressure limit (e.g., feed system capability)
+            if 'pressure_limit' in constraints:
+                pressure_valid = constraints['pressure_limit']
+                fig.add_trace(go.Contour(
+                    x=pc_values,
+                    y=mr_values,
+                    z=pressure_valid.astype(float),
+                    contours=dict(
+                        start=0.5, end=0.5, size=0,
+                        coloring='none',
+                    ),
+                    line=dict(color=self.theme.info, width=3),
+                    showscale=False,
+                    name='Pressure Limit',
+                    hoverinfo='skip'
+                ))
+
+            # Shade invalid regions
+            combined_valid = np.ones_like(performance_grid, dtype=bool)
+            for key, valid in constraints.items():
+                combined_valid &= valid
+
+            invalid_mask = ~combined_valid
+            if invalid_mask.any():
+                # Create semi-transparent overlay for invalid regions
+                invalid_z = np.where(invalid_mask, 1.0, np.nan)
+                fig.add_trace(go.Heatmap(
+                    x=pc_values,
+                    y=mr_values,
+                    z=invalid_z,
+                    colorscale=[[0, 'rgba(128,128,128,0.4)'], [1, 'rgba(128,128,128,0.4)']],
+                    showscale=False,
+                    hoverinfo='skip',
+                    name='Invalid Region'
+                ))
+
+        # ========== Design Point ==========
+        if design_point:
+            fig.add_trace(go.Scatter(
+                x=[design_point['pc']],
+                y=[design_point['mr']],
+                mode='markers',
+                marker=dict(
+                    size=20,
+                    symbol='star',
+                    color='gold',
+                    line=dict(color='black', width=2)
+                ),
+                name='Design Point',
+                hovertemplate=(
+                    f"Design Point<br>"
+                    f"Pc: {design_point['pc']:.1f} bar<br>"
+                    f"O/F: {design_point['mr']:.2f}<extra></extra>"
+                )
+            ))
+
+        # ========== Throttle Range Indicators ==========
+        if design_point and 'throttle_range' in design_point:
+            throttle_min = design_point.get('throttle_min', 0.3)
+            throttle_max = design_point.get('throttle_max', 1.0)
+            pc_design = design_point['pc']
+
+            # Draw throttle range line
+            fig.add_trace(go.Scatter(
+                x=[pc_design * throttle_min, pc_design * throttle_max],
+                y=[design_point['mr'], design_point['mr']],
+                mode='lines+markers',
+                line=dict(color='white', width=3),
+                marker=dict(size=10, symbol='line-ns', color='white'),
+                name=f'Throttle Range ({throttle_min*100:.0f}-{throttle_max*100:.0f}%)',
+                hoverinfo='skip'
+            ))
+
+        # ========== Layout ==========
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=20)
+            ),
+            xaxis=dict(
+                title="Chamber Pressure [bar]",
+                showgrid=True,
+                gridcolor=self.theme.grid_color
+            ),
+            yaxis=dict(
+                title="Mixture Ratio (O/F)",
+                showgrid=True,
+                gridcolor=self.theme.grid_color
+            ),
+            legend=dict(
+                x=0.02,
+                y=0.98,
+                bgcolor='rgba(255,255,255,0.9)',
+                bordercolor='black',
+                borderwidth=1
+            ),
+            width=900,
+            height=700,
+            hovermode='closest'
+        )
+
+        self.theme.apply_to_figure(fig)
+
+        return fig
+
+    def create_multi_metric_envelope(
+        self,
+        pc_values: np.ndarray,
+        mr_values: np.ndarray,
+        metrics: Dict[str, np.ndarray],
+        design_point: Optional[Dict[str, float]] = None,
+        title: str = "Multi-Metric Operating Envelope"
+    ) -> go.Figure:
+        """
+        Create envelope visualization with multiple performance metrics.
+
+        Args:
+            pc_values: 1D array of chamber pressures [bar]
+            mr_values: 1D array of mixture ratios
+            metrics: Dict of 2D arrays with keys like 'isp', 'cstar', 'thrust'
+            design_point: Optional dict with 'pc' and 'mr' keys
+            title: Plot title
+
+        Returns:
+            Plotly Figure with subplots for each metric
+        """
+        n_metrics = len(metrics)
+        cols = min(2, n_metrics)
+        rows = (n_metrics + 1) // 2
+
+        subplot_titles = [name.upper() for name in metrics.keys()]
+
+        fig = make_subplots(
+            rows=rows, cols=cols,
+            subplot_titles=subplot_titles,
+            horizontal_spacing=0.15,
+            vertical_spacing=0.12
+        )
+
+        colorscales = ['Viridis', 'Plasma', 'Inferno', 'Cividis']
+
+        for idx, (name, data) in enumerate(metrics.items()):
+            row = idx // cols + 1
+            col = idx % cols + 1
+
+            fig.add_trace(
+                go.Contour(
+                    x=pc_values,
+                    y=mr_values,
+                    z=data,
+                    colorscale=colorscales[idx % len(colorscales)],
+                    contours=dict(showlabels=True),
+                    colorbar=dict(
+                        title=name,
+                        len=0.4,
+                        y=1 - (row - 0.5) / rows,
+                        x=col / cols + 0.02 if col == cols else None
+                    ),
+                    showscale=True,
+                    hovertemplate=f"Pc: %{{x:.1f}}<br>O/F: %{{y:.2f}}<br>{name}: %{{z:.1f}}<extra></extra>"
+                ),
+                row=row, col=col
+            )
+
+            # Add design point to each subplot
+            if design_point:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[design_point['pc']],
+                        y=[design_point['mr']],
+                        mode='markers',
+                        marker=dict(size=12, symbol='x', color='red', line=dict(width=2)),
+                        showlegend=(idx == 0),
+                        name='Design Point',
+                        hoverinfo='skip'
+                    ),
+                    row=row, col=col
+                )
+
+            fig.update_xaxes(title_text="Pc [bar]", row=row, col=col)
+            fig.update_yaxes(title_text="O/F", row=row, col=col)
+
+        fig.update_layout(
+            title=dict(text=title, x=0.5, font=dict(size=18)),
+            height=400 * rows,
+            width=500 * cols,
+            showlegend=True
+        )
+
+        self.theme.apply_to_figure(fig)
+
+        return fig
+
+    def to_html(
+        self,
+        fig: go.Figure,
+        include_plotlyjs: str = 'cdn',
+        full_html: bool = False
+    ) -> str:
+        """Export figure to embeddable HTML."""
+        return fig.to_html(
+            include_plotlyjs=include_plotlyjs,
+            full_html=full_html
+        )
