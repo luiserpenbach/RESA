@@ -46,6 +46,22 @@ class PlotTheme:
     steel: str = "#A9A9A9"
     nickel: str = "#8B8B8B"
 
+    # Additional material colors
+    inconel: str = "#7B7B7B"
+    aluminum: str = "#C0C0C0"
+    graphite: str = "#4A4A4A"
+    ceramic: str = "#F5F5DC"
+
+    # Propellant colors
+    oxidizer: str = "#00CED1"
+    fuel: str = "#CD853F"
+    combustion_gas: str = "#FF6347"
+
+    # Flow visualization colors
+    hot_gas: str = "#FF4500"
+    cold_flow: str = "#1E90FF"
+    spray_cone: str = "rgba(65, 105, 225, 0.3)"
+
     # Typography
     font_family: str = "Arial, Helvetica, sans-serif"
     title_size: int = 18

@@ -501,3 +501,292 @@ class CrossSectionPlotter:
             include_plotlyjs=include_plotlyjs,
             full_html=full_html
         )
+
+
+class ContourPlotter:
+    """
+    Visualizes engine contour with temperature overlay.
+
+    Creates a 2D representation of the engine geometry with:
+    - Wall contour profile
+    - Temperature color mapping on the wall
+    - Annotated key stations (chamber, throat, exit)
+    - Cooling channel indicators
+
+    Example:
+        plotter = ContourPlotter()
+        fig = plotter.create_figure(engine_result)
+        fig.show()
+    """
+
+    def __init__(self, theme: Optional[PlotTheme] = None):
+        """Initialize with optional custom theme."""
+        self.theme = theme or DEFAULT_THEME
+
+    def create_figure(
+        self,
+        result: 'EngineDesignResult',
+        show_channels: bool = True,
+        show_annotations: bool = True,
+        title: Optional[str] = None
+    ) -> go.Figure:
+        """
+        Create engine contour visualization with temperature overlay.
+
+        Args:
+            result: EngineDesignResult from engine.design() or engine.analyze()
+            show_channels: If True, shows cooling channel indicators
+            show_annotations: If True, adds station annotations
+            title: Optional custom title
+
+        Returns:
+            Plotly Figure with engine contour and temperature overlay
+        """
+        fig = go.Figure()
+
+        # Extract data
+        x_mm = result.geometry.x_full
+        y_mm = result.geometry.y_full
+        cooling = result.cooling_data
+        T_wall = cooling['T_wall_hot']
+
+        # Normalize temperature for color mapping
+        T_min, T_max = T_wall.min(), T_wall.max()
+        T_norm = (T_wall - T_min) / (T_max - T_min + 1e-6)
+
+        # Create colorscale from theme
+        colorscale = self.theme.temperature_colorscale
+
+        # ========== Upper wall contour with temperature ==========
+        # Create filled contour using scatter with colorscale
+        for i in range(len(x_mm) - 1):
+            # Get color from normalized temperature
+            color_idx = T_norm[i]
+            # Interpolate color from colorscale
+            color = self._interpolate_colorscale(colorscale, color_idx)
+
+            fig.add_trace(go.Scatter(
+                x=[x_mm[i], x_mm[i + 1], x_mm[i + 1], x_mm[i], x_mm[i]],
+                y=[y_mm[i], y_mm[i + 1], 0, 0, y_mm[i]],
+                fill='toself',
+                fillcolor=color,
+                line=dict(width=0),
+                mode='lines',
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+
+        # ========== Wall outline ==========
+        # Upper wall
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=y_mm,
+            mode='lines',
+            line=dict(color='black', width=2),
+            name='Wall Contour',
+            hovertemplate="X: %{x:.1f} mm<br>R: %{y:.2f} mm<extra></extra>"
+        ))
+
+        # Lower wall (mirror)
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=-np.array(y_mm),
+            mode='lines',
+            line=dict(color='black', width=2),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+        # Mirror the temperature fill
+        for i in range(len(x_mm) - 1):
+            color_idx = T_norm[i]
+            color = self._interpolate_colorscale(colorscale, color_idx)
+
+            fig.add_trace(go.Scatter(
+                x=[x_mm[i], x_mm[i + 1], x_mm[i + 1], x_mm[i], x_mm[i]],
+                y=[-y_mm[i], -y_mm[i + 1], 0, 0, -y_mm[i]],
+                fill='toself',
+                fillcolor=color,
+                line=dict(width=0),
+                mode='lines',
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+
+        # ========== Cooling channels (simplified indicator) ==========
+        if show_channels:
+            channel_offset = 2  # mm offset for channel indication
+            fig.add_trace(go.Scatter(
+                x=x_mm, y=np.array(y_mm) + channel_offset,
+                mode='lines',
+                line=dict(color=self.theme.coolant, width=3, dash='dot'),
+                name='Cooling Circuit',
+                hoverinfo='skip'
+            ))
+            fig.add_trace(go.Scatter(
+                x=x_mm, y=-np.array(y_mm) - channel_offset,
+                mode='lines',
+                line=dict(color=self.theme.coolant, width=3, dash='dot'),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+
+        # ========== Annotations ==========
+        if show_annotations:
+            # Find throat position (minimum radius)
+            throat_idx = np.argmin(y_mm)
+            throat_x = x_mm[throat_idx]
+            throat_r = y_mm[throat_idx]
+
+            # Chamber end (first index typically)
+            chamber_x = x_mm[0]
+            chamber_r = y_mm[0]
+
+            # Exit (last index)
+            exit_x = x_mm[-1]
+            exit_r = y_mm[-1]
+
+            annotations = [
+                dict(
+                    x=chamber_x, y=chamber_r + 5,
+                    text=f"Chamber<br>D={2*chamber_r:.1f}mm",
+                    showarrow=True, arrowhead=2, ax=0, ay=-30,
+                    font=dict(size=10)
+                ),
+                dict(
+                    x=throat_x, y=throat_r + 5,
+                    text=f"Throat<br>D*={2*throat_r:.1f}mm",
+                    showarrow=True, arrowhead=2, ax=0, ay=-30,
+                    font=dict(size=10, color=self.theme.danger)
+                ),
+                dict(
+                    x=exit_x, y=exit_r + 5,
+                    text=f"Exit<br>D={2*exit_r:.1f}mm",
+                    showarrow=True, arrowhead=2, ax=0, ay=-30,
+                    font=dict(size=10)
+                )
+            ]
+
+            for ann in annotations:
+                fig.add_annotation(**ann)
+
+        # ========== Temperature colorbar ==========
+        # Add invisible trace for colorbar
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(
+                colorscale=colorscale,
+                cmin=T_min,
+                cmax=T_max,
+                colorbar=dict(
+                    title='Wall Temp [K]',
+                    titleside='right',
+                    thickness=15,
+                    len=0.7,
+                    y=0.5
+                ),
+                showscale=True
+            ),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+        # ========== Layout ==========
+        engine_name = getattr(result, 'engine_name', 'Engine')
+        if hasattr(result, 'config'):
+            engine_name = result.config.engine_name
+
+        max_r = max(y_mm)
+        fig.update_layout(
+            title=dict(
+                text=title or f"Engine Contour: {engine_name}",
+                x=0.5,
+                font=dict(size=18)
+            ),
+            xaxis=dict(
+                title="Axial Position [mm]",
+                zeroline=False,
+                showgrid=True,
+                gridcolor=self.theme.grid_color
+            ),
+            yaxis=dict(
+                title="Radial Position [mm]",
+                zeroline=True,
+                zerolinecolor='black',
+                zerolinewidth=1,
+                showgrid=True,
+                gridcolor=self.theme.grid_color,
+                scaleanchor="x",
+                scaleratio=1,
+                range=[-max_r * 1.5, max_r * 1.5]
+            ),
+            showlegend=True,
+            legend=dict(
+                x=0.02, y=0.98,
+                bgcolor='rgba(255,255,255,0.8)'
+            ),
+            height=600,
+            width=1000,
+            margin=dict(l=60, r=100, t=80, b=60)
+        )
+
+        self.theme.apply_to_figure(fig)
+
+        return fig
+
+    def _interpolate_colorscale(self, colorscale: list, value: float) -> str:
+        """
+        Interpolate color from colorscale at given normalized value.
+
+        Args:
+            colorscale: List of [position, color] pairs
+            value: Normalized value between 0 and 1
+
+        Returns:
+            Interpolated color string
+        """
+        value = max(0, min(1, value))
+
+        # Find bracketing colors
+        lower_idx = 0
+        for i, (pos, _) in enumerate(colorscale):
+            if pos <= value:
+                lower_idx = i
+
+        if lower_idx >= len(colorscale) - 1:
+            return colorscale[-1][1]
+
+        lower_pos, lower_color = colorscale[lower_idx]
+        upper_pos, upper_color = colorscale[lower_idx + 1]
+
+        # Interpolate
+        if upper_pos == lower_pos:
+            t = 0
+        else:
+            t = (value - lower_pos) / (upper_pos - lower_pos)
+
+        # Parse colors and interpolate RGB
+        lower_rgb = self._parse_color(lower_color)
+        upper_rgb = self._parse_color(upper_color)
+
+        r = int(lower_rgb[0] + t * (upper_rgb[0] - lower_rgb[0]))
+        g = int(lower_rgb[1] + t * (upper_rgb[1] - lower_rgb[1]))
+        b = int(lower_rgb[2] + t * (upper_rgb[2] - lower_rgb[2]))
+
+        return f'rgb({r},{g},{b})'
+
+    def _parse_color(self, color: str) -> tuple:
+        """Parse hex color to RGB tuple."""
+        color = color.lstrip('#')
+        return tuple(int(color[i:i + 2], 16) for i in (0, 2, 4))
+
+    def to_html(
+        self,
+        fig: go.Figure,
+        include_plotlyjs: str = 'cdn',
+        full_html: bool = False
+    ) -> str:
+        """Export figure to embeddable HTML."""
+        return fig.to_html(
+            include_plotlyjs=include_plotlyjs,
+            full_html=full_html
+        )

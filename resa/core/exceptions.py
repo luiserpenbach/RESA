@@ -52,6 +52,11 @@ class GeometryError(RESAError):
     pass
 
 
+class PhysicsError(RESAError):
+    """Error in physics calculation."""
+    pass
+
+
 class CombustionError(RESAError):
     """
     Error in combustion calculation.
