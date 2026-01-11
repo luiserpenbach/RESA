@@ -31,73 +31,69 @@ class CombustionResult:
         return 8314.46 / self.mw
 
 
-@dataclass(frozen=True)
+@dataclass
 class NozzleGeometry:
     """Nozzle contour geometry."""
-    x_full: np.ndarray      # Axial coordinates [mm]
-    y_full: np.ndarray      # Radial coordinates [mm]
-    
+    x_full: np.ndarray      # Axial coordinates [m]
+    y_full: np.ndarray      # Radial coordinates [m]
+
     # Section breakdown (for detailed analysis)
-    x_chamber: np.ndarray
-    y_chamber: np.ndarray
-    x_convergent: np.ndarray
-    y_convergent: np.ndarray
-    x_throat: np.ndarray
-    y_throat: np.ndarray
-    x_divergent: np.ndarray
-    y_divergent: np.ndarray
-    
-    @property
-    def throat_radius(self) -> float:
-        """Throat radius [mm]."""
-        return float(np.min(self.y_full))
-    
-    @property
-    def exit_radius(self) -> float:
-        """Exit radius [mm]."""
-        return float(self.y_full[-1])
-    
+    x_chamber: np.ndarray = None
+    y_chamber: np.ndarray = None
+    x_convergent: np.ndarray = None
+    y_convergent: np.ndarray = None
+    x_divergent: np.ndarray = None
+    y_divergent: np.ndarray = None
+
+    # Key dimensions (direct values)
+    throat_radius: float = 0.0
+    exit_radius: float = 0.0
+    chamber_radius: float = 0.0
+    total_length: float = 0.0
+    theta_exit: float = 0.0
+
     @property
     def expansion_ratio(self) -> float:
         """Area expansion ratio."""
-        return (self.exit_radius / self.throat_radius) ** 2
-    
-    @property
-    def total_length(self) -> float:
-        """Total length [mm]."""
-        return float(self.x_full[-1] - self.x_full[0])
-    
+        if self.throat_radius > 0:
+            return (self.exit_radius / self.throat_radius) ** 2
+        return float(np.min(self.y_full)) / float(self.y_full[-1]) ** 2
+
     def __hash__(self):
         return hash((self.throat_radius, self.exit_radius, self.total_length))
 
 
-@dataclass(frozen=True)
+@dataclass
 class CoolingChannelGeometry:
     """Cooling channel geometry at all stations."""
-    x_contour: np.ndarray           # Axial position [m]
-    radius_contour: np.ndarray      # Inner chamber radius [m]
+    x: np.ndarray                   # Axial position [m]
+    y: np.ndarray                   # Inner chamber radius [m]
     channel_width: np.ndarray       # [m]
     channel_height: np.ndarray      # [m]
     rib_width: np.ndarray           # [m]
     wall_thickness: np.ndarray      # [m]
     roughness: float                # Surface roughness [m]
-    number_of_channels: int
+    num_channels: int
     helix_angle: np.ndarray = None  # [rad]
-    
+
+    def __post_init__(self):
+        if self.helix_angle is None:
+            self.helix_angle = np.zeros_like(self.x)
+
     @property
     def hydraulic_diameter(self) -> np.ndarray:
         """Hydraulic diameter [m]."""
         return 2.0 * self.channel_width * self.channel_height / (
             self.channel_width + self.channel_height
         )
-    
+
     @property
     def flow_area(self) -> np.ndarray:
-        """Flow area per channel [m²]."""
+        """Flow area per channel [m^2]."""
         return self.channel_width * self.channel_height
-    
+
     def __hash__(self):
-        return hash((self.number_of_channels, self.roughness, len(self.x_contour)))
+        return hash((self.num_channels, self.roughness, len(self.x)))
 
 
 @dataclass
@@ -107,24 +103,15 @@ class CoolingResult:
     P_coolant: np.ndarray       # Coolant pressure [Pa]
     T_wall_hot: np.ndarray      # Hot gas side wall temperature [K]
     T_wall_cold: np.ndarray     # Coolant side wall temperature [K]
-    q_flux: np.ndarray          # Heat flux [W/m²]
+    q_flux: np.ndarray          # Heat flux [W/m^2]
     velocity: np.ndarray        # Coolant velocity [m/s]
-    density: np.ndarray         # Coolant density [kg/m³]
-    quality: np.ndarray         # Vapor quality (-1 if single phase)
-    
-    @property
-    def max_wall_temp(self) -> float:
-        return float(np.max(self.T_wall_hot))
-    
-    @property
-    def max_heat_flux(self) -> float:
-        return float(np.max(self.q_flux))
-    
-    @property
-    def pressure_drop(self) -> float:
-        """Total pressure drop [Pa]."""
-        return float(np.max(self.P_coolant) - np.min(self.P_coolant))
-    
+
+    # Summary metrics (direct values)
+    max_wall_temp: float = 0.0      # Maximum hot wall temperature [K]
+    max_heat_flux: float = 0.0      # Maximum heat flux [W/m^2]
+    pressure_drop: float = 0.0      # Total pressure drop [bar]
+    outlet_temp: float = 0.0        # Coolant outlet temperature [K]
+
     def to_dict(self) -> Dict[str, np.ndarray]:
         """Convert to dictionary for legacy compatibility."""
         return {
@@ -134,8 +121,6 @@ class CoolingResult:
             'T_wall_cold': self.T_wall_cold,
             'q_flux': self.q_flux,
             'velocity': self.velocity,
-            'density': self.density,
-            'quality': self.quality
         }
 
 
