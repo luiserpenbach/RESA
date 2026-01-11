@@ -1,0 +1,28 @@
+Parameter,Value
+--- META ---,
+Engine Name,Demo 45KN
+Run Tag,timestamped
+Fuel,CH4
+Oxidizer,LOX
+Coolant,REFPROP::NitrousOxide
+--- OPERATING POINT ---,
+Chamber Pressure [bar],70
+Mixture Ratio,3.0
+Mass Flow Total [kg/s],15.4871
+--- PERFORMANCE ---,
+Thrust Vac [N],57088.8
+Thrust Sea [N],42105.3
+Isp Vac [s],375.9
+Isp Sea [s],277.2
+Expansion Ratio,80.0
+Exit Diameter [mm],631.88
+--- GEOMETRY (Fixed) ---,
+Throat Diameter [mm],70.65
+Chamber Length [mm],1076.0
+Contraction Ratio,6
+--- COOLING SUMMARY ---,
+Max Hot Wall Temp [K],1872.6
+Max Coolant Temp [K],355.2
+Max Heat Flux [MW/m2],24.97
+Pressure Drop [bar],12.99
+Min Coolant Density [kg/m3],187.5

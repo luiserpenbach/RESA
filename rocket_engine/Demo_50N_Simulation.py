@@ -9,15 +9,16 @@ if __name__ == "__main__":
         fuel="C2H6",
         oxidizer="N2O",
         thrust_n=50,
-        pc_bar=7,
-        mr=6.0,
-        p_exit_bar=1.013,
+        pc_bar=8,
+        mr=7.0,
+        p_exit_bar=1e-3,
         contraction_ratio=15,
-        expansion_ratio=40,
+        expansion_ratio=0,
+        L_star=900,
 
         # Geometry
-        channel_width_throat=0.3e-3,
-        channel_height=0.5e-3,
+        channel_width_throat=0.5e-3,
+        channel_height=0.75e-3,
         rib_width_throat=0.5e-3,
         wall_thickness=0.4e-3,
 

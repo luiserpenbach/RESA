@@ -1,0 +1,23 @@
+# Swirl Injector Configuration
+# Example configuration for N2O/Ethanol injector
+
+propellants:
+  fuel: "REFPROP::Ethanol"
+  oxidizer: "REFPROP::NitrousOxide"
+  fuel_temperature: 300.0  # K
+  oxidizer_temperature: 500.0  # K
+
+operating:
+  inlet_pressure: 4500000.0  # Pa (45 bar)
+  pressure_drop: 2000000.0   # Pa (20 bar)
+  mass_flow_fuel: 0.20       # kg/s
+  mass_flow_oxidizer: 0.80   # kg/s
+  oxidizer_velocity: 100.0   # m/s
+
+geometry:
+  num_elements: 3
+  num_fuel_ports: 3          # tangential fuel inlet ports per element
+  num_ox_orifices: 5         # oxidizer inlet orifices per element
+  post_thickness: 0.0005     # m (0.5 mm)
+  spray_half_angle: 60.0     # degrees
+  minimum_clearance: 0.0005  # m (0.5 mm)

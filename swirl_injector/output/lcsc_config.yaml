@@ -1,0 +1,17 @@
+geometry:
+  minimum_clearance: 0.0005
+  num_elements: 3
+  num_ports: 3
+  post_thickness: 0.0005
+  spray_half_angle: 60.0
+operating:
+  inlet_pressure: 4500000.0
+  mass_flow_fuel: 0.2
+  mass_flow_oxidizer: 0.8
+  oxidizer_velocity: 100.0
+  pressure_drop: 2000000.0
+propellants:
+  fuel: REFPROP::Ethanol
+  fuel_temperature: 300.0
+  oxidizer: REFPROP::NitrousOxide
+  oxidizer_temperature: 500.0

@@ -192,9 +192,11 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     # 1. Setup
-    a = np.pi/4*2.5**2*15
-    d_mono = np.sqrt(a/np.pi*4)
-    injector = N2Orifice(diameter_mm=d_mono, cd=0.65, p_tank_bar=45.0, t_tank_k=293.15)
+
+    a = 6 * np.pi/4 * 2**2 *3
+    d_mono = np.sqrt(a / np.pi * 4)
+    print(d_mono)
+    injector = N2Orifice(diameter_mm=d_mono, cd=0.5, p_tank_bar=40.0, t_tank_k=300.15)
 
     print(f"Injector initialized: {injector.d * 1000}mm @ {injector.p_tank / 1e5} bar")
 

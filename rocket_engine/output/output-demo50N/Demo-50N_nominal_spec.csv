@@ -1,0 +1,28 @@
+Parameter,Value
+--- META ---,
+Engine Name,Demo-50N
+Run Tag,nominal
+Fuel,C2H6
+Oxidizer,N2O
+Coolant,REFPROP::NitrousOxide
+--- OPERATING POINT ---,
+Chamber Pressure [bar],8
+Mixture Ratio,7.0
+Mass Flow Total [kg/s],0.0269
+--- PERFORMANCE ---,
+Thrust Vac [N],63.7
+Thrust Sea [N],52.6
+Isp Vac [s],241.9
+Isp Sea [s],199.8
+Expansion Ratio,2.01
+Exit Diameter [mm],11.51
+--- GEOMETRY (Fixed) ---,
+Throat Diameter [mm],8.11
+Chamber Length [mm],78.0
+Contraction Ratio,15
+--- COOLING SUMMARY ---,
+Max Hot Wall Temp [K],928.6
+Max Coolant Temp [K],492.8
+Max Heat Flux [MW/m2],11.8
+Pressure Drop [bar],0.06
+Min Coolant Density [kg/m3],62.0

@@ -1,0 +1,59 @@
+{
+  "geometry": {
+    "orifice_radius": 0.002103916232814534,
+    "port_radius": 0.00045720822676516753,
+    "swirl_chamber_radius": 0.006942923568287962,
+    "oxidizer_port_radius": 0.006179049877975781,
+    "oxidizer_orifice_radius": 0.004070091686784337,
+    "orifice_length": 0.002103916232814534,
+    "swirl_chamber_length": 0.013885847136575924
+  },
+  "performance": {
+    "spray_half_angle": 60.0,
+    "swirl_number": 71.80438066321778,
+    "momentum_flux_ratio": 1.5831224729849493,
+    "velocity_ratio": 6.783434822119256,
+    "weber_number": 1615.2316801234879,
+    "discharge_coefficient": 0.08541757037291411,
+    "reynolds_port": 149733.35127768375,
+    "film_thickness": 0.00026304318400144496,
+    "aircore_radius": 0.0016107169710426069
+  },
+  "mass_flows": {
+    "fuel_per_element": 0.06666666666666667,
+    "oxidizer_per_element": 0.26666666666666666,
+    "total_fuel": 0.2,
+    "total_oxidizer": 0.8
+  },
+  "propellant_properties": {
+    "fuel_at_inlet": {
+      "density": 787.4981443924247,
+      "viscosity": 0.0010737839546526554,
+      "surface_tension": 0.021798197175455725,
+      "molar_mass": 0.04606844,
+      "gamma": 237.4512195018497
+    },
+    "oxidizer_at_inlet": {
+      "density": 49.46610954389485,
+      "viscosity": 2.4372345759961162e-05,
+      "surface_tension": null,
+      "molar_mass": 0.0440128,
+      "gamma": 1.2353794950222654
+    },
+    "fuel_at_chamber": {
+      "density": 785.7242741633619,
+      "viscosity": 0.001060582528436236,
+      "surface_tension": 0.032,
+      "molar_mass": 0.04606844,
+      "gamma": 416.8964053801248
+    },
+    "oxidizer_at_chamber": {
+      "density": 27.032447696778267,
+      "viscosity": 2.3977147842024248e-05,
+      "surface_tension": null,
+      "molar_mass": 0.0440128,
+      "gamma": 1.2275357159432665
+    }
+  },
+  "injector_type": "LCSC"
+}

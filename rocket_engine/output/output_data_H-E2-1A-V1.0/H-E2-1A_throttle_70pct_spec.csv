@@ -1,0 +1,28 @@
+Parameter,Value
+--- META ---,
+Engine Name,H-E2-1A
+Run Tag,throttle_70pct
+Fuel,Ethanol90
+Oxidizer,N2O
+Coolant,REFPROP::NitrousOxide
+--- OPERATING POINT ---,
+Chamber Pressure [bar],14.38
+Mixture Ratio,2.5
+Mass Flow Total [kg/s],0.6237
+--- PERFORMANCE ---,
+Thrust Vac [N],1451.8
+Thrust Sea [N],1188.8
+Isp Vac [s],237.4
+Isp Sea [s],194.3
+Expansion Ratio,4.1
+Exit Diameter [mm],56.05
+--- GEOMETRY (Fixed) ---,
+Throat Diameter [mm],27.68
+Chamber Length [mm],180.9
+Contraction Ratio,12.0
+--- COOLING SUMMARY ---,
+Max Hot Wall Temp [K],754.3
+Max Coolant Temp [K],356.7
+Max Heat Flux [MW/m2],10.58
+Pressure Drop [bar],1.85
+Min Coolant Density [kg/m3],212.2

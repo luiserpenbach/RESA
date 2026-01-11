@@ -1,0 +1,33 @@
+Parameter,Value
+--- META ---,
+Engine Name,Phoenix-1
+Date Generated,2025-11-24 23:09:43
+Fuel,Ethanol90
+Oxidizer,N2O
+--- INPUTS ---,
+Design Thrust [N],2200
+Chamber Pressure [bar],50
+Mixture Ratio (O/F),4.0
+L* [mm],1200
+Contraction Ratio,12.0
+--- PERFORMANCE ---,
+Isp Vacuum [s],271.69
+Isp Sea Level (Est) [s],246.47
+C* (Characteristic Vel) [m/s],5084.0
+Thrust Vacuum [N],2200
+Total Mass Flow [kg/s],0.9581
+Oxidizer Mass Flow [kg/s],0.7665
+Fuel Mass Flow [kg/s],0.1916
+Exit Mach Number,3.078
+--- GEOMETRY ---,
+Throat Diameter [mm],34.33
+Exit Diameter [mm],96.35
+Expansion Ratio,7.88
+Chamber Diameter [mm],118.91
+Total Length [mm],227.6
+--- THERMAL ---,
+Max Wall Temp (Hot Side) [K],405.9
+Max Coolant Temp [K],314.2
+Max Heat Flux [MW/m^2],9.47
+Coolant Pressure Drop [bar],1.2
+Coolant Exit Velocity [m/s],7.4

@@ -236,11 +236,11 @@ if __name__ == '__main__':
             v_ox = 100,
             post_wall_thickness= 0.5 * 1e-3,
             oxidizer = 'N2O',
-            p_ox_inlet = 50 * 1e5,
-            t_ox= 542,
+            p_ox_inlet = 40 * 1e5,
+            t_ox= 500,
             fuel = 'Ethanol',
-            p_fuel_inlet = 50 * 1e5,
-            t_fuel= 290,
+            p_fuel_inlet = 40 * 1e5,
+            t_fuel= 300,
             )
 
 

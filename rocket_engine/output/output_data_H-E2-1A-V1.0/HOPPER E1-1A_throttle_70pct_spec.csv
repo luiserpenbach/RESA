@@ -1,0 +1,28 @@
+Parameter,Value
+--- META ---,
+Engine Name,HOPPER E1-1A
+Run Tag,throttle_70pct
+Fuel,Ethanol90
+Oxidizer,N2O
+Coolant,REFPROP::NitrousOxide
+--- OPERATING POINT ---,
+Chamber Pressure [bar],13.45
+Mixture Ratio,2.0
+Mass Flow Total [kg/s],0.6458
+--- PERFORMANCE ---,
+Thrust Vac [N],1408.4
+Thrust Sea [N],1135.2
+Isp Vac [s],222.4
+Isp Sea [s],179.2
+Expansion Ratio,4.1
+Exit Diameter [mm],56.82
+--- GEOMETRY (Fixed) ---,
+Throat Diameter [mm],28.06
+Chamber Length [mm],176.7
+Contraction Ratio,12.0
+--- COOLING SUMMARY ---,
+Max Hot Wall Temp [K],671.8
+Max Coolant Temp [K],337.9
+Max Heat Flux [MW/m2],8.38
+Pressure Drop [bar],3.07
+Min Coolant Density [kg/m3],266.1
