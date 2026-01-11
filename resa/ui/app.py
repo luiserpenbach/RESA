@@ -4,8 +4,15 @@ Unified Streamlit UI Application
 
 Run with: streamlit run resa/ui/app.py
 """
-import streamlit as st
+import sys
 from pathlib import Path
+
+# Add project root to path for imports
+_project_root = Path(__file__).parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+import streamlit as st
 
 # Page configuration must be first Streamlit command
 st.set_page_config(
