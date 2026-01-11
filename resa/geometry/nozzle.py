@@ -178,7 +178,7 @@ class NozzleGenerator:
         y_cont = np.concatenate([y_arc_ent, y_cone, y_arc_throat])
 
         # Volume of convergent section
-        vol_conv = np.trapezoid(np.pi * y_cont ** 2, x_cont)
+        vol_conv = np.trapz(np.pi * y_cont ** 2, x_cont)
 
         # Cylinder length from L*
         vol_cyl_req = Vc - vol_conv
