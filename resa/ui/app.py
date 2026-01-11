@@ -2,7 +2,7 @@
 RESA - Rocket Engine Sizing & Analysis
 Unified Streamlit UI Application
 
-Run with: streamlit run -m resa.ui.app
+Run with: streamlit run resa/ui/app.py
 """
 import streamlit as st
 from pathlib import Path
