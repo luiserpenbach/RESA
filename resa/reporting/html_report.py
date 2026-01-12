@@ -467,10 +467,25 @@ class HTMLReportGenerator:
     <div class="container">
         <!-- Header -->
         <header>
-            <h1>{context['engine_name']}</h1>
-            <p class="meta">
-                Design Report | Generated: {context['generated_at']}
-            </p>
+            <div style="display: flex; align-items: center; gap: 24px;">
+                <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="48" fill="white" opacity="0.15"/>
+                    <path d="M50 10 L65 45 L60 45 L60 75 L55 85 L50 75 L45 85 L40 75 L40 45 L35 45 Z"
+                          fill="white" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                    <ellipse cx="50" cy="30" rx="8" ry="6" fill="rgba(52,152,219,0.8)"/>
+                    <path d="M35 45 L25 55 L35 50 Z" fill="white" opacity="0.9"/>
+                    <path d="M65 45 L75 55 L65 50 Z" fill="white" opacity="0.9"/>
+                    <ellipse cx="45" cy="82" rx="3" ry="8" fill="#e74c3c" opacity="0.9"/>
+                    <ellipse cx="50" cy="78" rx="3" ry="10" fill="#f39c12" opacity="0.9"/>
+                    <ellipse cx="55" cy="82" rx="3" ry="8" fill="#e74c3c" opacity="0.9"/>
+                </svg>
+                <div>
+                    <h1 style="margin-bottom: 5px;">{context['engine_name']}</h1>
+                    <p class="meta" style="margin: 0;">
+                        Design Report | Generated: {context['generated_at']}
+                    </p>
+                </div>
+            </div>
         </header>
 
         <!-- Performance Summary -->

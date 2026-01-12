@@ -14,14 +14,14 @@ from datetime import datetime
 
 def render_design_page():
     """Render the engine design page."""
-    st.title("🔧 Engine Design")
+    st.title("Engine Design")
 
     # Tabs for workflow
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📝 Configuration",
-        "▶️ Run Design",
-        "📊 Results",
-        "📄 Report"
+        "Configuration",
+        "Run Design",
+        "Results",
+        "Report"
     ])
 
     with tab1:
@@ -98,7 +98,7 @@ def render_configuration_tab():
         t_in = st.number_input("Inlet Temperature [K]", min_value=200.0, max_value=400.0, value=290.0)
 
     # Save configuration
-    if st.button("💾 Save Configuration", type="primary", use_container_width=True):
+    if st.button("Save Configuration", type="primary", use_container_width=True):
         try:
             from resa.core.config import EngineConfig
 
@@ -162,7 +162,7 @@ def render_run_tab():
 
     st.divider()
 
-    if st.button("🚀 Run Full Design", type="primary", use_container_width=True):
+    if st.button("Run Full Design", type="primary", use_container_width=True):
         with st.spinner("Running combustion analysis..."):
             progress = st.progress(0)
 
@@ -271,11 +271,14 @@ def render_results_tab():
         try:
             from resa.visualization.engine_3d import Engine3DViewer
 
-            viewer = Engine3DViewer()
-            fig = viewer.create_figure(result.nozzle_geometry)
-            st.plotly_chart(fig, use_container_width=True)
+            if result.nozzle_geometry is not None:
+                viewer = Engine3DViewer()
+                fig = viewer.render_nozzle(result.nozzle_geometry)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Nozzle geometry not available")
         except Exception as e:
-            st.info("3D visualization requires complete geometry data")
+            st.error(f"3D visualization error: {e}")
 
 
 def render_report_tab():
@@ -302,7 +305,7 @@ def render_report_tab():
 
     report_format = st.selectbox("Output Format", ["HTML", "PDF (requires weasyprint)"])
 
-    if st.button("📄 Generate Report", type="primary"):
+    if st.button("Generate Report", type="primary"):
         with st.spinner("Generating report..."):
             try:
                 from resa.reporting.html_report import HTMLReportGenerator
@@ -314,7 +317,7 @@ def render_report_tab():
 
                 # Download button
                 st.download_button(
-                    "⬇️ Download HTML Report",
+                    "Download HTML Report",
                     html,
                     file_name=f"{config.engine_name}_report.html",
                     mime="text/html"
