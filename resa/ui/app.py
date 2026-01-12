@@ -125,22 +125,22 @@ def render_sidebar():
         st.subheader("Navigation")
 
         pages = {
-            'home': ('🏠', 'Dashboard'),
-            'design': ('🔧', 'Engine Design'),
-            'analysis': ('📊', 'Analysis'),
-            'throttle': ('⚡', 'Throttle Map'),
-            'monte_carlo': ('🎲', 'Monte Carlo'),
-            'optimization': ('🎯', 'Optimization'),
-            'injector': ('💧', 'Injector Design'),
-            'igniter': ('🔥', 'Igniter Design'),
-            'contour': ('📐', '3D Contour'),
-            'tank': ('🛢️', 'Tank Simulation'),
-            'projects': ('📁', 'Projects'),
-            'settings': ('⚙️', 'Settings'),
+            'home': 'Dashboard',
+            'design': 'Engine Design',
+            'analysis': 'Analysis',
+            'throttle': 'Throttle Map',
+            'monte_carlo': 'Monte Carlo',
+            'optimization': 'Optimization',
+            'injector': 'Injector Design',
+            'igniter': 'Igniter Design',
+            'contour': '3D Contour',
+            'tank': 'Tank Simulation',
+            'projects': 'Projects',
+            'settings': 'Settings',
         }
 
-        for page_id, (icon, name) in pages.items():
-            if st.button(f"{icon} {name}", key=f"nav_{page_id}", use_container_width=True):
+        for page_id, name in pages.items():
+            if st.button(name, key=f"nav_{page_id}", use_container_width=True):
                 st.session_state.current_page = page_id
                 st.rerun()
 
@@ -158,13 +158,13 @@ def render_sidebar():
         st.subheader("Quick Actions")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("📄 New", use_container_width=True):
+            if st.button("New", use_container_width=True):
                 st.session_state.engine_config = None
                 st.session_state.design_result = None
                 st.session_state.current_page = 'design'
                 st.rerun()
         with col2:
-            if st.button("💾 Save", use_container_width=True):
+            if st.button("Save", use_container_width=True):
                 st.session_state.current_page = 'projects'
                 st.rerun()
 
@@ -174,7 +174,7 @@ def render_sidebar():
 
 def render_home_page():
     """Render the home dashboard."""
-    st.title("🚀 RESA Dashboard")
+    st.title("RESA Dashboard")
     st.markdown("**Rocket Engine Sizing & Analysis** - State-of-the-art design tool")
 
     # Quick stats
