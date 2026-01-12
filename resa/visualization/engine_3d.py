@@ -398,9 +398,9 @@ class Engine3DViewer:
         geo = channel_geometry
 
         # Downsample for performance
-        step = max(1, len(geo.x_contour) // resolution)
-        xs = geo.x_contour[::step] * 1000  # Convert to mm
-        rs_inner = geo.radius_contour[::step] * 1000
+        step = max(1, len(geo.x) // resolution)
+        xs = geo.x[::step] * 1000  # Convert to mm
+        rs_inner = geo.y[::step] * 1000
         t_wall = geo.wall_thickness[::step] * 1000
         w_ch = geo.channel_width[::step] * 1000
         h_ch = geo.channel_height[::step] * 1000
@@ -410,7 +410,7 @@ class Engine3DViewer:
         r_bottom = rs_inner + t_wall
         r_top = r_bottom + h_ch
 
-        N = geo.number_of_channels
+        N = geo.num_channels
         pitch_angle = 2 * np.pi / N
 
         # Angular width of channel (varies with position)
@@ -631,8 +631,8 @@ class Engine3DViewer:
         geo = channel_geometry
 
         # Extract and prepare geometry data
-        xs = geo.x_contour * 1000  # mm
-        rs_inner = geo.radius_contour * 1000
+        xs = geo.x * 1000  # mm
+        rs_inner = geo.y * 1000
         t_wall = geo.wall_thickness * 1000
         h_ch = geo.channel_height * 1000
         rs_outer = rs_inner + t_wall + h_ch + (closeout_thickness * 1000)
@@ -815,13 +815,13 @@ class Engine3DViewer:
         """
         # Determine geometry type and extract profile
         if hasattr(geometry, 'x_full'):
-            # NozzleGeometryData
+            # NozzleGeometry
             x_profile = geometry.x_full
             r_profile = geometry.y_full
         else:
             # CoolingChannelGeometry
-            x_profile = geometry.x_contour * 1000
-            r_profile = geometry.radius_contour * 1000
+            x_profile = geometry.x * 1000
+            r_profile = geometry.y * 1000
 
         # Validate data length
         if len(temperature_data) != len(x_profile):

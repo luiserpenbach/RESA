@@ -101,11 +101,11 @@ def render_nozzle_tab():
                 geom = generator.geometry
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Chamber Dia", f"{geom.D_c*1000:.1f} mm")
+                    st.metric("Chamber Dia", f"{geom.R_c*2000:.1f} mm")
                 with col2:
-                    st.metric("Throat Dia", f"{geom.D_t*1000:.1f} mm")
+                    st.metric("Throat Dia", f"{params.R_t*2000:.1f} mm")
                 with col3:
-                    st.metric("Exit Dia", f"{geom.D_e*1000:.1f} mm")
+                    st.metric("Exit Dia", f"{geom.R_e*2000:.1f} mm")
 
                 col4, col5, col6 = st.columns(3)
                 with col4:
@@ -113,7 +113,7 @@ def render_nozzle_tab():
                 with col5:
                     st.metric("Conv Length", f"{geom.L_conv*1000:.1f} mm")
                 with col6:
-                    st.metric("Nozzle Length", f"{geom.L_nozzle*1000:.1f} mm")
+                    st.metric("Nozzle Length", f"{geom.L_div*1000:.1f} mm")
 
                 # 3D Preview
                 render_3d_preview(generator)

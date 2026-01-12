@@ -296,12 +296,12 @@ class CrossSectionPlotter:
         geo = channel_geometry
 
         # Extract dimensions at this station (convert to mm)
-        R_inner = geo.radius_contour[station_idx] * 1000
+        R_inner = geo.y[station_idx] * 1000
         t_wall = geo.wall_thickness[station_idx] * 1000
         w_ch = geo.channel_width[station_idx] * 1000
         h_ch = geo.channel_height[station_idx] * 1000
         w_rib = geo.rib_width[station_idx] * 1000
-        n_channels = geo.number_of_channels
+        n_channels = geo.num_channels
         t_closeout = closeout_thickness * 1000
 
         # Calculate radii
