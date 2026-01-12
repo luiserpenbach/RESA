@@ -235,7 +235,7 @@ class HTMLReportGenerator:
             'max_coolant_temp': f"{np.max(cooling['T_coolant']):.0f}",
             'max_heat_flux': f"{np.max(cooling['q_flux']) / 1e6:.2f}",
             'pressure_drop': f"{(np.max(cooling['P_coolant']) - np.min(cooling['P_coolant'])) / 1e5:.2f}",
-            'min_density': f"{np.min(cooling['density']):.1f}",
+            'max_velocity': f"{np.max(cooling['velocity']):.1f}",
         }
 
     def _render_template(self, context: Dict[str, Any]) -> str:
@@ -522,7 +522,7 @@ class HTMLReportGenerator:
                     <tr><th>Max Coolant Temp</th><td>{context['cooling']['max_coolant_temp']} K</td></tr>
                     <tr><th>Max Heat Flux</th><td>{context['cooling']['max_heat_flux']} MW/m²</td></tr>
                     <tr><th>Pressure Drop</th><td>{context['cooling']['pressure_drop']} bar</td></tr>
-                    <tr><th>Min Coolant Density</th><td>{context['cooling']['min_density']} kg/m³</td></tr>
+                    <tr><th>Max Coolant Velocity</th><td>{context['cooling']['max_velocity']} m/s</td></tr>
                 </table>
             </div>
         </div>

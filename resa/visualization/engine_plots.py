@@ -177,18 +177,6 @@ class EngineDashboardPlotter:
             row=4, col=1, secondary_y=False
         )
 
-        # Density (secondary y)
-        fig.add_trace(
-            go.Scatter(
-                x=x_mm, y=cooling['density'],
-                name="Density",
-                mode='lines',
-                line=dict(color=self.theme.primary, width=2, dash='dot'),
-                hovertemplate="X: %{x:.1f} mm<br>ρ: %{y:.1f} kg/m³<extra></extra>"
-            ),
-            row=4, col=1, secondary_y=True
-        )
-
         # ========== Axis Labels ==========
         # Row 1
         fig.update_yaxes(title_text="Radius [mm]", row=1, col=1, secondary_y=False)
@@ -206,8 +194,6 @@ class EngineDashboardPlotter:
 
         # Row 4
         fig.update_yaxes(title_text="Velocity [m/s]", row=4, col=1, secondary_y=False)
-        fig.update_yaxes(title_text="Density [kg/m³]", row=4, col=1, secondary_y=True,
-                         title_font=dict(color=self.theme.primary))
 
         # X-axis label (only on bottom)
         fig.update_xaxes(title_text="Axial Position [mm]", row=4, col=1)
