@@ -419,7 +419,7 @@ class CrossSectionPlotter:
         ))
 
         # ========== Annotations ==========
-        x_pos = geo.x_contour[station_idx] * 1000
+        x_pos = geo.x[station_idx] * 1000
         fig.add_annotation(
             x=0, y=0,
             text=f"N = {n_channels}<br>X = {x_pos:.1f} mm",
