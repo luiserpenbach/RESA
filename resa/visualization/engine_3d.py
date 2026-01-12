@@ -18,8 +18,7 @@ from typing import Optional, Dict, Any, Tuple, List, Union, TYPE_CHECKING
 from resa.visualization.themes import PlotTheme, EngineeringTheme, DarkTheme, DEFAULT_THEME
 
 if TYPE_CHECKING:
-    from rocket_engine.src.geometry.nozzle import NozzleGeometryData
-    from rocket_engine.src.geometry.cooling import CoolingChannelGeometry
+    from resa.core.results import NozzleGeometry, CoolingChannelGeometry
 
 
 class Engine3DViewer:
@@ -691,7 +690,7 @@ class Engine3DViewer:
             w_ch = geo.channel_width[::step] * 1000
             w_rib = geo.rib_width[::step] * 1000
 
-            N = geo.number_of_channels
+            N = geo.num_channels
             pitch_angle = 2 * np.pi / N
             total_arc = w_ch + w_rib
             theta_widths = pitch_angle * (w_ch / total_arc)
