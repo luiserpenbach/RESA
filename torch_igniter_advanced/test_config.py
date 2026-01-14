@@ -10,7 +10,7 @@ import os
 import sys
 sys.path.insert(0, '/home/claude')
 
-from torch_igniter_simple.config import IgniterConfig, IgniterResults
+from torch_igniter_advanced.config import IgniterConfig, IgniterResults
 
 
 class TestIgniterConfig(unittest.TestCase):

@@ -502,7 +502,8 @@ def run_chf_margin_map(T_inlet, q_flux_peak):
                     40, 1e-3, 3.0, 0.02
                 )
                 chf_margin[i, j] = result.min_chf_margin
-            except:
+            except Exception:
+                # Analysis may fail for some conditions, mark as NaN
                 chf_margin[i, j] = np.nan
 
     fig = go.Figure(data=go.Contour(
@@ -624,7 +625,8 @@ def display_results(result):
             if s.fluid.P < N2OConstants.P_CRIT:
                 try:
                     T_sat.append(get_saturation_properties(s.fluid.P)[0] - 273.15)
-                except:
+                except Exception:
+                    # Saturation property calculation may fail, skip
                     T_sat.append(None)
             else:
                 T_sat.append(None)

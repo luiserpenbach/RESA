@@ -435,7 +435,8 @@ def get_pseudo_critical_temperature(P: float) -> Optional[float]:
             cp = PropsSI("C", "T", T, "P", P, "N2O")
             if cp > cp_max:
                 cp_max, T_pc = cp, T
-        except:
+        except Exception:
+            # CoolProp may fail at some conditions, skip those points
             pass
 
     return T_pc
@@ -614,7 +615,8 @@ class HeatTransferCorrelations:
 
         try:
             dP = PropsSI("P", "T", T_sat + dT_sat, "Q", 0, "N2O") - P
-        except:
+        except Exception:
+            # CoolProp may fail, use fallback pressure difference
             dP = 10000
 
         if sigma > 0 and h_fg > 0:
@@ -950,7 +952,8 @@ class N2OCoolingSolver:
                 try:
                     state_new = get_n2o_state(P, h=h_new)
                     quality_new = state_new.quality or 0
-                except:
+                except Exception:
+                    # If state calculation fails, keep previous quality
                     quality_new = quality_old
 
                 # Friction pressure drop

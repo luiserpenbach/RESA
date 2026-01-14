@@ -4,7 +4,7 @@ Test HEM injector sizing for N2O and incompressible flow for ethanol.
 
 import sys
 
-from torch_igniter_simple.injector import InjectorDesigner
+from torch_igniter_advanced.injector import InjectorDesigner
 import numpy as np
 
 print("=" * 70)
