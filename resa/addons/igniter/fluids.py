@@ -94,14 +94,14 @@ class FluidProperties:
                 # Force liquid phase (saturated if in two-phase region)
                 try:
                     rho = CP.PropsSI('D', 'T', temperature, 'P', pressure, self.N2O)
-                except:
+                except Exception:
                     # If fails, get saturated liquid density
                     rho = CP.PropsSI('D', 'P', pressure, 'Q', 0, self.N2O)
             elif phase == 'vapor':
                 # Force vapor phase
                 try:
                     rho = CP.PropsSI('D', 'T', temperature, 'P', pressure, self.N2O)
-                except:
+                except Exception:
                     # If fails, get saturated vapor density
                     rho = CP.PropsSI('D', 'P', pressure, 'Q', 1, self.N2O)
             else:

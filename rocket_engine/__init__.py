@@ -37,8 +37,16 @@ License: MIT
 __version__ = "1.0.0"
 __author__ = "RESA Development Team"
 
+import warnings
+warnings.warn(
+    "The 'rocket_engine' package is deprecated and will be removed in a future version. "
+    "Please migrate to the 'resa' package instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 # Convenience imports
-from core import (
+from .core import (
     EngineConfig,
     EngineDesignResult,
     CombustionResult,
