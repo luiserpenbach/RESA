@@ -19,7 +19,7 @@ from plotly.subplots import make_subplots
 
 # Import cooling module
 try:
-    from rocket_engine.physics.cooling_n2o import (
+    from resa.physics.cooling_n2o import (
         N2OCoolingSolver,
         CoolingChannelGenerator,
         CoolingChannelGeometry,
@@ -32,7 +32,20 @@ try:
 
     COOLING_AVAILABLE = True
 except ImportError:
-    COOLING_AVAILABLE = False
+    try:
+        from rocket_engine.physics.cooling_n2o import (
+            N2OCoolingSolver,
+            CoolingChannelGenerator,
+            CoolingChannelGeometry,
+            N2OConstants,
+            FlowRegime,
+            plot_cooling_results,
+            get_n2o_state,
+            get_saturation_properties
+        )
+        COOLING_AVAILABLE = True
+    except ImportError:
+        COOLING_AVAILABLE = False
 
 
 def render_n2o_cooling_page():

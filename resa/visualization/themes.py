@@ -215,44 +215,105 @@ class DarkTheme(PlotTheme):
     """
     Dark theme for presentations and UI.
 
+    Matches the RESA dark-modern Streamlit aesthetic (#0e1117 base).
     Optimized for:
-    - Dark mode applications
-    - Presentations
-    - Streamlit dark theme
+    - Dark mode Streamlit applications
+    - Presentations and dashboards
+    - High contrast data visualisation
     """
 
-    primary: str = "#3498db"
-    secondary: str = "#e74c3c"
-    accent: str = "#2ecc71"
-    danger: str = "#e74c3c"
-    info: str = "#1abc9c"
+    # Core series colors — bright enough on dark bg
+    primary: str = "#4a9eff"       # bright blue
+    secondary: str = "#ff6b6b"     # coral red
+    accent: str = "#2ecc71"        # emerald green
+    danger: str = "#ff4d4d"        # vivid red
+    info: str = "#1abc9c"          # teal
 
-    background: str = "#1e1e1e"
-    paper_background: str = "#252525"
-    grid_color: str = "#404040"
+    # Backgrounds — match Streamlit dark
+    background: str = "#0e1117"
+    paper_background: str = "#111827"
+    grid_color: str = "#1f2d45"
 
-    # Brighter materials for visibility
-    copper: str = "#cd7f32"
+    # Font colors
+    font_family: str = "Inter, Arial, Helvetica, sans-serif"
+    title_size: int = 17
+    axis_title_size: int = 13
+    tick_size: int = 11
+
+    # Material colors — vivid for dark bg
+    copper: str = "#e89c4f"
     coolant: str = "#5dade2"
-    steel: str = "#bdc3c7"
+    gas: str = "#ff8c69"
+    steel: str = "#c0c8d4"
+    nickel: str = "#a0aab8"
+    inconel: str = "#8898aa"
+    aluminum: str = "#d0d8e4"
+    graphite: str = "#7a8898"
+    ceramic: str = "#d4cfa8"
+
+    # Propellant colors
+    oxidizer: str = "#00e5ff"
+    fuel: str = "#ff9d3a"
+    combustion_gas: str = "#ff5722"
+
+    # Flow colours
+    hot_gas: str = "#ff5722"
+    cold_flow: str = "#2196f3"
+    spray_cone: str = "rgba(65, 155, 255, 0.25)"
+
+    # Color scales for heatmaps
+    temperature_colorscale: List = field(default_factory=lambda: [
+        [0.0, "#1a3a6e"],
+        [0.25, "#2196f3"],
+        [0.5, "#00e5ff"],
+        [0.7, "#ffeb3b"],
+        [0.85, "#ff9800"],
+        [1.0, "#ff1744"],
+    ])
+
+    pressure_colorscale: List = field(default_factory=lambda: [
+        [0.0, "#111827"],
+        [0.5, "#1a5276"],
+        [1.0, "#4a9eff"],
+    ])
 
     def apply_to_figure(self, fig: go.Figure) -> go.Figure:
-        """Apply dark theme."""
-        super().apply_to_figure(fig)
-
+        """Apply dark theme with full layout and axis styling."""
+        # Base layout
         fig.update_layout(
-            font=dict(color="#ffffff"),
+            font=dict(
+                family=self.font_family,
+                size=self.tick_size,
+                color="#c8d6e5",
+            ),
+            title=dict(
+                font=dict(size=self.title_size, color="#e8f4fd"),
+                x=0.5,
+                xanchor="center",
+            ),
+            paper_bgcolor=self.paper_background,
+            plot_bgcolor=self.background,
+            margin=self.margin,
+            legend=dict(
+                bgcolor="rgba(17,24,39,0.85)",
+                bordercolor="#1f2d45",
+                borderwidth=1,
+                font=dict(color="#c8d6e5", size=11),
+            ),
         )
 
-        fig.update_xaxes(
-            title_font=dict(color="#ffffff"),
-            tickfont=dict(color="#cccccc"),
+        # Axes
+        axis_style = dict(
+            title_font=dict(size=self.axis_title_size, color="#7ba7cc"),
+            tickfont=dict(size=self.tick_size, color="#7ba7cc"),
+            gridcolor=self.grid_color,
+            linecolor="#1f2d45",
+            zerolinecolor="#2a3f5c",
+            showgrid=True,
+            gridwidth=1,
         )
-
-        fig.update_yaxes(
-            title_font=dict(color="#ffffff"),
-            tickfont=dict(color="#cccccc"),
-        )
+        fig.update_xaxes(**axis_style)
+        fig.update_yaxes(**axis_style)
 
         return fig
 

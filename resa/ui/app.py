@@ -16,365 +16,567 @@ import streamlit as st
 
 # Page configuration must be first Streamlit command
 st.set_page_config(
-    page_title="RESA - Rocket Engine Design Suite",
+    page_title="RESA — Rocket Engine Design Suite",
     page_icon="🚀",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# Custom CSS
+# ─── Global dark-modern CSS ────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Main container */
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        max-width: 1400px;
-    }
+/* ── Base & body ── */
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: #0e1117;
+    color: #e0e0e0;
+}
 
-    /* Metric cards */
-    [data-testid="metric-container"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-    }
+.main .block-container {
+    padding-top: 1.8rem;
+    padding-bottom: 2rem;
+    max-width: 1440px;
+}
 
-    [data-testid="metric-container"] label {
-        color: rgba(255,255,255,0.8) !important;
-    }
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #141a26 0%, #0b0f1a 100%);
+    border-right: 1px solid #1f2d45;
+}
 
-    [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        color: white !important;
-    }
+[data-testid="stSidebar"] * {
+    color: #c8d6e5 !important;
+}
 
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3a5f 0%, #0d1b2a 100%);
-    }
+[data-testid="stSidebar"] .stButton > button {
+    background: transparent;
+    border: 1px solid #1f2d45;
+    color: #c8d6e5 !important;
+    text-align: left;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    transition: all 0.2s ease;
+}
 
-    [data-testid="stSidebar"] .stRadio label {
-        color: white !important;
-    }
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: #1a2744;
+    border-color: #2e6fff;
+    color: #ffffff !important;
+}
 
-    /* Headers */
-    h1, h2, h3 {
-        color: #1e3a5f;
-    }
+[data-testid="stSidebar"] hr {
+    border-color: #1f2d45;
+}
 
-    /* Cards */
-    .stCard {
-        border-radius: 10px;
-        padding: 1.5rem;
-        background: white;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
+/* ── Metric cards ── */
+[data-testid="metric-container"] {
+    background: linear-gradient(135deg, #0d2137 0%, #0b1a2e 100%);
+    border: 1px solid #1a3a5c;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+}
 
-    /* Buttons */
-    .stButton > button {
-        border-radius: 8px;
-        padding: 0.5rem 2rem;
-        font-weight: 600;
-    }
+[data-testid="metric-container"] label {
+    color: #7ba7cc !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
 
-    /* Success/Warning boxes */
-    .stSuccess, .stWarning, .stError {
-        border-radius: 8px;
-    }
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    color: #e8f4fd !important;
+    font-size: 1.55rem !important;
+    font-weight: 600 !important;
+}
 
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
+[data-testid="stMetricDelta"] {
+    font-size: 0.8rem !important;
+}
 
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        padding: 10px 20px;
-    }
+/* ── Headings ── */
+h1 { color: #e8f4fd; font-weight: 700; letter-spacing: -0.02em; }
+h2 { color: #c8d6e5; font-weight: 600; }
+h3 { color: #a8bfd6; font-weight: 600; }
+
+/* ── Divider ── */
+hr { border-color: #1f2d45 !important; }
+
+/* ── Buttons (primary) ── */
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #2e6fff 0%, #1a3fa8 100%);
+    border: none;
+    color: #ffffff !important;
+    border-radius: 8px;
+    padding: 0.55rem 1.6rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: all 0.2s ease;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #4a82ff 0%, #2255cc 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(46, 111, 255, 0.35);
+}
+
+/* ── Buttons (secondary / default) ── */
+.stButton > button {
+    background: #111827;
+    border: 1px solid #2a3f5c;
+    color: #c8d6e5 !important;
+    border-radius: 8px;
+    padding: 0.5rem 1.4rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    border-color: #2e6fff;
+    background: #162035;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    background: #111827;
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: 7px;
+    padding: 8px 18px;
+    color: #7ba7cc !important;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: transparent !important;
+    border: none !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #1a3a6e 0%, #0d2650 100%) !important;
+    color: #e8f4fd !important;
+    border: 1px solid #2255cc !important;
+}
+
+/* ── Alerts ── */
+.stSuccess {
+    background-color: #0a2618 !important;
+    border-left: 3px solid #21c97a !important;
+    color: #7cf4b6 !important;
+    border-radius: 6px;
+}
+
+.stWarning {
+    background-color: #231a06 !important;
+    border-left: 3px solid #f0a000 !important;
+    color: #f5d080 !important;
+    border-radius: 6px;
+}
+
+.stError {
+    background-color: #1e0a0a !important;
+    border-left: 3px solid #d64045 !important;
+    color: #f08080 !important;
+    border-radius: 6px;
+}
+
+.stInfo {
+    background-color: #091a2e !important;
+    border-left: 3px solid #2e6fff !important;
+    color: #7bbfff !important;
+    border-radius: 6px;
+}
+
+/* ── Inputs ── */
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stSelectbox"] div,
+[data-testid="stTextArea"] textarea {
+    background: #111827 !important;
+    border-color: #2a3f5c !important;
+    color: #e0e0e0 !important;
+    border-radius: 6px;
+}
+
+/* ── Sliders ── */
+[data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {
+    background: #2e6fff !important;
+    border-color: #4a82ff !important;
+}
+
+/* ── Expanders ── */
+[data-testid="stExpander"] {
+    background: #111827;
+    border: 1px solid #1f2d45;
+    border-radius: 8px;
+}
+
+[data-testid="stExpander"] summary {
+    color: #7ba7cc !important;
+    font-weight: 600;
+}
+
+/* ── Plotly chart backgrounds ── */
+.js-plotly-plot .plotly .main-svg {
+    background: #0e1117 !important;
+}
+
+/* ── Feature card (HTML) ── */
+.resa-card {
+    background: linear-gradient(135deg, #111827 0%, #0d1520 100%);
+    border: 1px solid #1f2d45;
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 0.8rem;
+    transition: border-color 0.2s ease;
+}
+
+.resa-card:hover {
+    border-color: #2e6fff;
+}
+
+.resa-card h4 {
+    color: #e8f4fd;
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.resa-card p {
+    color: #7ba7cc;
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+
+/* ── Status badge ── */
+.badge-safe {
+    display: inline-block;
+    background: #0a2618;
+    color: #21c97a;
+    border: 1px solid #21c97a;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-warn {
+    display: inline-block;
+    background: #231a06;
+    color: #f0a000;
+    border: 1px solid #f0a000;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-danger {
+    display: inline-block;
+    background: #1e0a0a;
+    color: #d64045;
+    border: 1px solid #d64045;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* ── Dataframe ── */
+[data-testid="stDataFrame"] {
+    border: 1px solid #1f2d45;
+    border-radius: 8px;
+}
+
+/* ── Spinner ── */
+[data-testid="stSpinner"] {
+    color: #2e6fff !important;
+}
+
+/* ── Caption / small text ── */
+.stCaption, small, caption {
+    color: #4a6a8a !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
+
+# ─── Navigation pages ─────────────────────────────────────────────────────
+_NAV_PAGES = {
+    "home":        ("🏠", "Dashboard"),
+    "cooling":     ("❄️", "Cooling Analysis"),
+    "design":      ("⚙️", "Engine Design"),
+    "analysis":    ("📊", "Off-Design Analysis"),
+    "throttle":    ("🎚️", "Throttle Map"),
+    "monte_carlo": ("🎲", "Monte Carlo"),
+    "optimization":("🎯", "Optimization"),
+    "injector":    ("💧", "Injector Design"),
+    "igniter":     ("🔥", "Igniter Design"),
+    "contour":     ("🔩", "3D Contour"),
+    "tank":        ("🛢️", "Tank Simulation"),
+    "projects":    ("📁", "Projects"),
+    "settings":    ("⚙️", "Settings"),
+}
 
 
 def init_session_state():
     """Initialize session state variables."""
     defaults = {
-        'current_page': 'home',
-        'engine_config': None,
-        'design_result': None,
-        'throttle_results': None,
-        'monte_carlo_results': None,
-        'project_name': None,
-        'analysis_history': [],
-        'theme': 'light'
+        "current_page": "home",
+        "engine_config": None,
+        "design_result": None,
+        "throttle_results": None,
+        "monte_carlo_results": None,
+        "project_name": None,
+        "analysis_history": [],
+        "theme": "dark",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
 
+def _nav_button(page_id: str, icon: str, label: str):
+    """Render a single sidebar nav button."""
+    active = st.session_state.current_page == page_id
+    btn_label = f"{icon}  {label}"
+    if active:
+        st.markdown(
+            f'<div style="background:#1a3a6e;border:1px solid #2255cc;'
+            f'border-radius:6px;padding:6px 12px;margin-bottom:4px;'
+            f'color:#e8f4fd;font-size:0.85rem;font-weight:600;">'
+            f'{btn_label}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        if st.button(btn_label, key=f"nav_{page_id}", use_container_width=True):
+            st.session_state.current_page = page_id
+            st.rerun()
+
+
 def render_sidebar():
     """Render the navigation sidebar."""
     with st.sidebar:
-        st.image("https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/rocket.svg", width=50)
-        st.title("RESA")
-        st.caption("Rocket Engine Sizing & Analysis")
+        st.markdown(
+            '<div style="text-align:center;padding:0.5rem 0 0.3rem;">'
+            '<span style="font-size:2.2rem;">🚀</span>'
+            '<div style="font-size:1.5rem;font-weight:800;color:#e8f4fd;'
+            'letter-spacing:-0.02em;">RESA</div>'
+            '<div style="font-size:0.72rem;color:#4a6a8a;letter-spacing:0.12em;'
+            'text-transform:uppercase;">Rocket Engine Suite</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        st.divider()
+
+        for page_id, (icon, label) in _NAV_PAGES.items():
+            _nav_button(page_id, icon, label)
 
         st.divider()
 
-        # Navigation
-        st.subheader("Navigation")
-
-        pages = {
-            'home': 'Dashboard',
-            'design': 'Engine Design',
-            'analysis': 'Analysis',
-            'throttle': 'Throttle Map',
-            'monte_carlo': 'Monte Carlo',
-            'optimization': 'Optimization',
-            'injector': 'Injector Design',
-            'igniter': 'Igniter Design',
-            'contour': '3D Contour',
-            'tank': 'Tank Simulation',
-            'projects': 'Projects',
-            'settings': 'Settings',
-        }
-
-        for page_id, name in pages.items():
-            if st.button(name, key=f"nav_{page_id}", use_container_width=True):
-                st.session_state.current_page = page_id
-                st.rerun()
-
-        st.divider()
-
-        # Active engine info
+        # Active engine status
         if st.session_state.engine_config:
-            st.subheader("Active Engine")
             cfg = st.session_state.engine_config
-            st.info(f"**{cfg.engine_name}**\n\n"
-                   f"Thrust: {cfg.thrust_n:.0f} N\n\n"
-                   f"Pc: {cfg.pc_bar:.1f} bar")
+            st.markdown(
+                f'<div class="resa-card">'
+                f'<h4>🔧 {cfg.engine_name}</h4>'
+                f'<p>Thrust: {cfg.thrust_n:.0f} N &nbsp;|&nbsp; Pc: {cfg.pc_bar:.1f} bar</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-        # Quick actions
-        st.subheader("Quick Actions")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("New", use_container_width=True):
+            if st.button("＋ New", use_container_width=True):
                 st.session_state.engine_config = None
                 st.session_state.design_result = None
-                st.session_state.current_page = 'design'
+                st.session_state.current_page = "design"
                 st.rerun()
         with col2:
-            if st.button("Save", use_container_width=True):
-                st.session_state.current_page = 'projects'
+            if st.button("💾 Save", use_container_width=True):
+                st.session_state.current_page = "projects"
                 st.rerun()
 
         st.divider()
-        st.caption("RESA v2.0.0")
+        st.caption("RESA v2.0.0  •  MIT License")
 
 
+# ─── Home dashboard ────────────────────────────────────────────────────────
 def render_home_page():
-    """Render the home dashboard."""
-    st.title("RESA Dashboard")
-    st.markdown("**Rocket Engine Sizing & Analysis** - State-of-the-art design tool")
+    st.markdown(
+        '<h1 style="font-size:2rem;">RESA Dashboard</h1>'
+        '<p style="color:#4a6a8a;margin-top:-0.5rem;">'
+        'Rocket Engine Sizing &amp; Analysis &mdash; v2.0.0</p>',
+        unsafe_allow_html=True,
+    )
 
-    # Quick stats
+    # Quick-stats row
     col1, col2, col3, col4 = st.columns(4)
+    dr = st.session_state.design_result
 
     with col1:
-        if st.session_state.design_result:
-            st.metric("Isp (vac)", f"{st.session_state.design_result.isp_vac:.1f} s")
-        else:
-            st.metric("Isp (vac)", "---")
-
+        st.metric("Isp (vac)", f"{dr.isp_vac:.1f} s" if dr else "—")
     with col2:
-        if st.session_state.design_result:
-            st.metric("Thrust", f"{st.session_state.design_result.thrust_vac:.0f} N")
-        else:
-            st.metric("Thrust", "---")
-
+        st.metric("Thrust", f"{dr.thrust_vac:.0f} N" if dr else "—")
     with col3:
-        if st.session_state.design_result:
-            st.metric("Mass Flow", f"{st.session_state.design_result.massflow_total:.3f} kg/s")
-        else:
-            st.metric("Mass Flow", "---")
-
+        st.metric("Mass Flow", f"{dr.massflow_total:.3f} kg/s" if dr else "—")
     with col4:
-        if st.session_state.design_result and hasattr(st.session_state.design_result, 'cooling'):
-            cooling = st.session_state.design_result.cooling
-            if cooling:
-                st.metric("Max T_wall", f"{cooling.max_wall_temp:.0f} K")
-            else:
-                st.metric("Max T_wall", "---")
+        if dr and getattr(dr, "cooling", None):
+            st.metric("Max T_wall", f"{dr.cooling.max_wall_temp:.0f} K")
         else:
-            st.metric("Max T_wall", "---")
+            st.metric("Max T_wall", "—")
 
     st.divider()
 
     # Feature cards
-    st.subheader("Getting Started")
+    st.markdown("### Modules")
+    c1, c2, c3 = st.columns(3)
 
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("""
-        ### 🔧 Engine Design
-        Complete engine sizing with:
-        - CEA combustion analysis
-        - Bell nozzle contours
-        - Regen cooling analysis
-
-        [Start Design →](#)
-        """)
-        if st.button("Open Engine Design", key="home_design"):
-            st.session_state.current_page = 'design'
+    with c1:
+        st.markdown(
+            '<div class="resa-card"><h4>❄️ Cooling Analysis</h4>'
+            "<p>Two-phase N2O regenerative cooling with CHF tracking, "
+            "Bartz heat flux, Chen boiling, supercritical correlations, "
+            "and parametric sweeps.</p></div>",
+            unsafe_allow_html=True,
+        )
+        if st.button("Open Cooling Analysis", key="h_cooling"):
+            st.session_state.current_page = "cooling"
             st.rerun()
 
-    with col2:
-        st.markdown("""
-        ### 🎲 Monte Carlo
-        Uncertainty analysis:
-        - Parameter distributions
-        - Sensitivity analysis
-        - Statistical outputs
-
-        [Run Analysis →](#)
-        """)
-        if st.button("Open Monte Carlo", key="home_mc"):
-            st.session_state.current_page = 'monte_carlo'
+    with c2:
+        st.markdown(
+            '<div class="resa-card"><h4>⚙️ Engine Design</h4>'
+            "<p>Full engine sizing: CEA combustion, bell nozzle contour, "
+            "regenerative cooling, performance dashboard and HTML reports.</p></div>",
+            unsafe_allow_html=True,
+        )
+        if st.button("Open Engine Design", key="h_design"):
+            st.session_state.current_page = "design"
             st.rerun()
 
-    with col3:
-        st.markdown("""
-        ### 📐 3D Contour
-        Advanced geometry:
-        - STL export
-        - Helical channels
-        - CAD-ready output
-
-        [Generate 3D →](#)
-        """)
-        if st.button("Open 3D Contour", key="home_contour"):
-            st.session_state.current_page = 'contour'
+    with c3:
+        st.markdown(
+            '<div class="resa-card"><h4>🎲 Monte Carlo</h4>'
+            "<p>Latin Hypercube Sampling uncertainty quantification "
+            "with sensitivity tornado charts and statistical distributions.</p></div>",
+            unsafe_allow_html=True,
+        )
+        if st.button("Open Monte Carlo", key="h_mc"):
+            st.session_state.current_page = "monte_carlo"
             st.rerun()
 
     st.divider()
 
     # Recent activity
-    st.subheader("Recent Activity")
+    st.markdown("### Recent Activity")
     if st.session_state.analysis_history:
-        for item in st.session_state.analysis_history[-5:]:
-            st.text(f"• {item}")
+        for item in reversed(st.session_state.analysis_history[-8:]):
+            st.markdown(f"<small style='color:#4a6a8a;'>• {item}</small>", unsafe_allow_html=True)
     else:
-        st.info("No recent activity. Start by creating a new engine design.")
+        st.info("No recent activity. Start by designing a new engine or running a cooling analysis.")
+
+
+# ─── Page loader stubs ─────────────────────────────────────────────────────
+def render_cooling_page():
+    from resa.ui.pages.cooling_page import render_cooling_page as _render
+    _render()
 
 
 def render_design_page():
-    """Render the engine design page."""
-    from resa.ui.pages.design_page import render_design_page as render
-    render()
+    from resa.ui.pages.design_page import render_design_page as _render
+    _render()
 
 
 def render_analysis_page():
-    """Render the analysis page."""
-    from resa.ui.pages.analysis_page import render_analysis_page as render
-    render()
+    from resa.ui.pages.analysis_page import render_analysis_page as _render
+    _render()
 
 
 def render_throttle_page():
-    """Render the throttle mapping page."""
-    from resa.ui.pages.throttle_page import render_throttle_page as render
-    render()
+    from resa.ui.pages.throttle_page import render_throttle_page as _render
+    _render()
 
 
 def render_monte_carlo_page():
-    """Render the Monte Carlo analysis page."""
-    from resa.ui.pages.monte_carlo_page import render_monte_carlo_page as render
-    render()
+    from resa.ui.pages.monte_carlo_page import render_monte_carlo_page as _render
+    _render()
 
 
 def render_optimization_page():
-    """Render the optimization page."""
-    from resa.ui.pages.optimization_page import render_optimization_page as render
-    render()
+    from resa.ui.pages.optimization_page import render_optimization_page as _render
+    _render()
 
 
 def render_injector_page():
-    """Render the injector design page."""
-    from resa.ui.pages.injector_page import render_injector_page as render
-    render()
+    from resa.ui.pages.injector_page import render_injector_page as _render
+    _render()
 
 
 def render_igniter_page():
-    """Render the igniter design page."""
-    from resa.ui.pages.igniter_page import render_igniter_page as render
-    render()
+    from resa.ui.pages.igniter_page import render_igniter_page as _render
+    _render()
 
 
 def render_contour_page():
-    """Render the 3D contour page."""
-    from resa.ui.pages.contour_page import render_contour_page as render
-    render()
+    from resa.ui.pages.contour_page import render_contour_page as _render
+    _render()
 
 
 def render_tank_page():
-    """Render the tank simulation page."""
-    from resa.ui.pages.tank_page import render_tank_page as render
-    render()
+    from resa.ui.pages.tank_page import render_tank_page as _render
+    _render()
 
 
 def render_projects_page():
-    """Render the projects page."""
-    from resa.ui.pages.projects_page import render_projects_page as render
-    render()
+    from resa.ui.pages.projects_page import render_projects_page as _render
+    _render()
 
 
 def render_settings_page():
-    """Render the settings page."""
-    st.title("⚙️ Settings")
+    st.markdown("<h1>Settings</h1>", unsafe_allow_html=True)
 
     st.subheader("Output Directory")
-    output_dir = st.text_input("Output directory", value="./output")
-
-    st.subheader("Theme")
-    theme = st.selectbox("Color theme", ["Light", "Dark", "Engineering"])
+    st.text_input("Output directory", value="./output")
 
     st.subheader("Units")
-    units = st.selectbox("Unit system", ["SI", "Imperial", "Mixed"])
+    st.selectbox("Unit system", ["SI", "Imperial", "Mixed"])
 
-    if st.button("Save Settings"):
+    if st.button("Save Settings", type="primary"):
         st.success("Settings saved!")
 
 
+# ─── Router ────────────────────────────────────────────────────────────────
+_PAGE_ROUTES = {
+    "home":         render_home_page,
+    "cooling":      render_cooling_page,
+    "design":       render_design_page,
+    "analysis":     render_analysis_page,
+    "throttle":     render_throttle_page,
+    "monte_carlo":  render_monte_carlo_page,
+    "optimization": render_optimization_page,
+    "injector":     render_injector_page,
+    "igniter":      render_igniter_page,
+    "contour":      render_contour_page,
+    "tank":         render_tank_page,
+    "projects":     render_projects_page,
+    "settings":     render_settings_page,
+}
+
+
 def main():
-    """Main application entry point."""
     init_session_state()
     render_sidebar()
 
-    # Route to current page
-    page_routes = {
-        'home': render_home_page,
-        'design': render_design_page,
-        'analysis': render_analysis_page,
-        'throttle': render_throttle_page,
-        'monte_carlo': render_monte_carlo_page,
-        'optimization': render_optimization_page,
-        'injector': render_injector_page,
-        'igniter': render_igniter_page,
-        'contour': render_contour_page,
-        'tank': render_tank_page,
-        'projects': render_projects_page,
-        'settings': render_settings_page,
-    }
-
-    current_page = st.session_state.current_page
-    if current_page in page_routes:
-        try:
-            page_routes[current_page]()
-        except ImportError as e:
-            st.error(f"Page module not found: {e}")
-            st.info("This page is under development.")
-    else:
-        render_home_page()
+    page = st.session_state.current_page
+    handler = _PAGE_ROUTES.get(page, render_home_page)
+    try:
+        handler()
+    except ImportError as exc:
+        st.error(f"Page module not available: {exc}")
+        st.info("This module is under development.")
 
 
 if __name__ == "__main__":
