@@ -279,7 +279,11 @@ class DarkTheme(PlotTheme):
 
     def apply_to_figure(self, fig: go.Figure) -> go.Figure:
         """Apply dark theme with full layout and axis styling."""
-        # Base layout
+        # Use Plotly's built-in dark template as the base so that trace colour
+        # defaults, hover labels, and modebar all use dark-mode-appropriate values
+        fig.update_layout(template="plotly_dark")
+
+        # Override with RESA's custom dark settings
         fig.update_layout(
             font=dict(
                 family=self.font_family,
@@ -294,6 +298,7 @@ class DarkTheme(PlotTheme):
             paper_bgcolor=self.paper_background,
             plot_bgcolor=self.background,
             margin=self.margin,
+            colorway=self.get_color_sequence(),
             legend=dict(
                 bgcolor="rgba(17,24,39,0.85)",
                 bordercolor="#1f2d45",
