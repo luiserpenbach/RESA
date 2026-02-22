@@ -1,5 +1,6 @@
 """UI Pages for RESA Streamlit application."""
 
+from resa.ui.pages.cooling_page import render_cooling_page
 from resa.ui.pages.design_page import render_design_page
 from resa.ui.pages.analysis_page import render_analysis_page
 from resa.ui.pages.throttle_page import render_throttle_page
@@ -12,6 +13,7 @@ from resa.ui.pages.tank_page import render_tank_page
 from resa.ui.pages.projects_page import render_projects_page
 
 __all__ = [
+    "render_cooling_page",
     "render_design_page",
     "render_analysis_page",
     "render_throttle_page",
