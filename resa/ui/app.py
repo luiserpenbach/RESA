@@ -217,11 +217,6 @@ hr { border-color: #1f2d45 !important; }
     font-weight: 600;
 }
 
-/* ── Plotly chart backgrounds ── */
-.js-plotly-plot .plotly .main-svg {
-    background: #0e1117 !important;
-}
-
 /* ── Feature card (HTML) ── */
 .resa-card {
     background: linear-gradient(135deg, #111827 0%, #0d1520 100%);
