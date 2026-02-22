@@ -5,7 +5,7 @@ import numpy as np
 
 def render_monte_carlo_page():
     """Render the Monte Carlo analysis page."""
-    st.title("🎲 Monte Carlo Uncertainty Analysis")
+    st.title("Monte Carlo Uncertainty Analysis")
 
     if not st.session_state.get('engine_config'):
         st.warning("Please create an engine configuration first.")
@@ -66,7 +66,7 @@ def render_monte_carlo_page():
         default=["Isp (vacuum)", "Thrust"]
     )
 
-    if st.button("🎲 Run Monte Carlo", type="primary"):
+    if st.button("Run Monte Carlo", type="primary"):
         with st.spinner(f"Running {n_samples} samples..."):
             progress = st.progress(0)
 
@@ -102,8 +102,9 @@ def render_monte_carlo_page():
                 # Histograms
                 try:
                     from resa.analysis.monte_carlo_plots import MonteCarloPlotter
-                    plotter = MonteCarloPlotter()
+                    from resa.visualization.themes import DarkTheme
 
+                    plotter = MonteCarloPlotter(theme=DarkTheme())
                     fig = plotter.create_histogram(isp_samples, "Isp (vacuum)", "s")
                     st.plotly_chart(fig, use_container_width=True)
                 except Exception as e:

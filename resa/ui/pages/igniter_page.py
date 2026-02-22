@@ -4,7 +4,7 @@ import streamlit as st
 
 def render_igniter_page():
     """Render the torch igniter design page."""
-    st.title("🔥 Torch Igniter Design")
+    st.title("Torch Igniter Design")
 
     tab1, tab2, tab3 = st.tabs(["Design", "Analysis", "Report"])
 
@@ -48,7 +48,7 @@ def render_design_tab():
         l_star = st.number_input("L* [mm]", 200.0, 1500.0, 800.0, key="ign_lstar")
         eps = st.number_input("Expansion Ratio", 1.5, 10.0, 3.0, key="ign_eps")
 
-    if st.button("🔥 Design Igniter", type="primary"):
+    if st.button("Design Igniter", type="primary"):
         with st.spinner("Running CEA and sizing..."):
             try:
                 from resa.addons.igniter import IgniterDesigner, IgniterConfig
@@ -111,5 +111,5 @@ def render_report_tab():
         st.warning("Run the design first.")
         return
 
-    if st.button("📄 Generate Report"):
+    if st.button("Generate Report"):
         st.success("Report generated! (Demo)")

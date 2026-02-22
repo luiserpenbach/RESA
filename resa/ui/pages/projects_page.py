@@ -265,6 +265,11 @@ def render_compare_tab():
                     height=400
                 )
 
+                try:
+                    from resa.visualization.themes import DarkTheme
+                    DarkTheme().apply_to_figure(fig)
+                except ImportError:
+                    pass
                 st.plotly_chart(fig, use_container_width=True)
 
                 # Detailed table

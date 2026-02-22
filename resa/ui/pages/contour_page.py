@@ -389,6 +389,11 @@ def render_3d_preview(generator):
             height=500
         )
 
+        try:
+            from resa.visualization.themes import DarkTheme
+            DarkTheme().apply_to_figure(fig)
+        except ImportError:
+            pass
         st.plotly_chart(fig, use_container_width=True)
 
     except Exception as e:
@@ -419,4 +424,9 @@ def render_3d_preview(generator):
             showlegend=False,
             height=300
         )
+        try:
+            from resa.visualization.themes import DarkTheme
+            DarkTheme().apply_to_figure(fig)
+        except ImportError:
+            pass
         st.plotly_chart(fig, use_container_width=True)

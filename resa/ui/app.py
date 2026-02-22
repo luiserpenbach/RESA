@@ -299,26 +299,39 @@ hr { border-color: #1f2d45 !important; }
 .stCaption, small, caption {
     color: #4a6a8a !important;
 }
+
+/* ── Hide Streamlit auto-generated page nav ── */
+[data-testid="stSidebarNav"] {
+    display: none;
+}
 </style>
 """, unsafe_allow_html=True)
 
 
-# ─── Navigation pages ─────────────────────────────────────────────────────
-_NAV_PAGES = {
-    "home":        ("🏠", "Dashboard"),
-    "cooling":     ("❄️", "Cooling Analysis"),
-    "design":      ("⚙️", "Engine Design"),
-    "analysis":    ("📊", "Off-Design Analysis"),
-    "throttle":    ("🎚️", "Throttle Map"),
-    "monte_carlo": ("🎲", "Monte Carlo"),
-    "optimization":("🎯", "Optimization"),
-    "injector":    ("💧", "Injector Design"),
-    "igniter":     ("🔥", "Igniter Design"),
-    "contour":     ("🔩", "3D Contour"),
-    "tank":        ("🛢️", "Tank Simulation"),
-    "projects":    ("📁", "Projects"),
-    "settings":    ("⚙️", "Settings"),
-}
+# ─── Navigation groups ────────────────────────────────────────────────────
+_NAV_GROUPS = [
+    ("Thrust Chamber", [
+        ("home",     "Dashboard"),
+        ("design",   "Engine Design"),
+        ("cooling",  "Cooling Analysis"),
+        ("contour",  "3D Contour"),
+    ]),
+    ("Performance Analysis", [
+        ("analysis",     "Off-Design Analysis"),
+        ("throttle",     "Throttle Map"),
+        ("monte_carlo",  "Monte Carlo"),
+        ("optimization", "Optimization"),
+    ]),
+    ("Component Plug-ins", [
+        ("injector", "Injector Design"),
+        ("igniter",  "Igniter Design"),
+        ("tank",     "Tank Simulation"),
+    ]),
+    ("Settings", [
+        ("projects", "Projects"),
+        ("settings", "Settings"),
+    ]),
+]
 
 
 def init_session_state():
@@ -338,20 +351,29 @@ def init_session_state():
             st.session_state[key] = value
 
 
-def _nav_button(page_id: str, icon: str, label: str):
+def _nav_group_header(label: str):
+    """Render a small all-caps section label for nav groups."""
+    st.markdown(
+        f'<div style="font-size:0.68rem;color:#4a6a8a;text-transform:uppercase;'
+        f'letter-spacing:0.1em;padding:0.8rem 0.6rem 0.2rem;font-weight:600;">'
+        f"{label}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _nav_button(page_id: str, label: str):
     """Render a single sidebar nav button."""
     active = st.session_state.current_page == page_id
-    btn_label = f"{icon}  {label}"
     if active:
         st.markdown(
             f'<div style="background:#1a3a6e;border:1px solid #2255cc;'
             f'border-radius:6px;padding:6px 12px;margin-bottom:4px;'
             f'color:#e8f4fd;font-size:0.85rem;font-weight:600;">'
-            f'{btn_label}</div>',
+            f"{label}</div>",
             unsafe_allow_html=True,
         )
     else:
-        if st.button(btn_label, key=f"nav_{page_id}", use_container_width=True):
+        if st.button(label, key=f"nav_{page_id}", use_container_width=True):
             st.session_state.current_page = page_id
             st.rerun()
 
@@ -361,18 +383,19 @@ def render_sidebar():
     with st.sidebar:
         st.markdown(
             '<div style="text-align:center;padding:0.5rem 0 0.3rem;">'
-            '<span style="font-size:2.2rem;">🚀</span>'
             '<div style="font-size:1.5rem;font-weight:800;color:#e8f4fd;'
             'letter-spacing:-0.02em;">RESA</div>'
             '<div style="font-size:0.72rem;color:#4a6a8a;letter-spacing:0.12em;'
             'text-transform:uppercase;">Rocket Engine Suite</div>'
-            '</div>',
+            "</div>",
             unsafe_allow_html=True,
         )
         st.divider()
 
-        for page_id, (icon, label) in _NAV_PAGES.items():
-            _nav_button(page_id, icon, label)
+        for group_label, pages in _NAV_GROUPS:
+            _nav_group_header(group_label)
+            for page_id, label in pages:
+                _nav_button(page_id, label)
 
         st.divider()
 
@@ -381,21 +404,21 @@ def render_sidebar():
             cfg = st.session_state.engine_config
             st.markdown(
                 f'<div class="resa-card">'
-                f'<h4>🔧 {cfg.engine_name}</h4>'
-                f'<p>Thrust: {cfg.thrust_n:.0f} N &nbsp;|&nbsp; Pc: {cfg.pc_bar:.1f} bar</p>'
-                f'</div>',
+                f"<h4>{cfg.engine_name}</h4>"
+                f"<p>Thrust: {cfg.thrust_n:.0f} N &nbsp;|&nbsp; Pc: {cfg.pc_bar:.1f} bar</p>"
+                f"</div>",
                 unsafe_allow_html=True,
             )
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("＋ New", use_container_width=True):
+            if st.button("New", use_container_width=True):
                 st.session_state.engine_config = None
                 st.session_state.design_result = None
                 st.session_state.current_page = "design"
                 st.rerun()
         with col2:
-            if st.button("💾 Save", use_container_width=True):
+            if st.button("Save", use_container_width=True):
                 st.session_state.current_page = "projects"
                 st.rerun()
 
@@ -436,7 +459,7 @@ def render_home_page():
 
     with c1:
         st.markdown(
-            '<div class="resa-card"><h4>❄️ Cooling Analysis</h4>'
+            '<div class="resa-card"><h4>Cooling Analysis</h4>'
             "<p>Two-phase N2O regenerative cooling with CHF tracking, "
             "Bartz heat flux, Chen boiling, supercritical correlations, "
             "and parametric sweeps.</p></div>",
@@ -448,7 +471,7 @@ def render_home_page():
 
     with c2:
         st.markdown(
-            '<div class="resa-card"><h4>⚙️ Engine Design</h4>'
+            '<div class="resa-card"><h4>Engine Design</h4>'
             "<p>Full engine sizing: CEA combustion, bell nozzle contour, "
             "regenerative cooling, performance dashboard and HTML reports.</p></div>",
             unsafe_allow_html=True,
@@ -459,7 +482,7 @@ def render_home_page():
 
     with c3:
         st.markdown(
-            '<div class="resa-card"><h4>🎲 Monte Carlo</h4>'
+            '<div class="resa-card"><h4>Monte Carlo</h4>'
             "<p>Latin Hypercube Sampling uncertainty quantification "
             "with sensitivity tornado charts and statistical distributions.</p></div>",
             unsafe_allow_html=True,

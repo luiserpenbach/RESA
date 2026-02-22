@@ -4,7 +4,7 @@ import streamlit as st
 
 def render_injector_page():
     """Render the injector design page."""
-    st.title("💧 Swirl Injector Design")
+    st.title("Swirl Injector Design")
 
     tab1, tab2, tab3 = st.tabs(["LCSC Design", "GCSC Design", "Cold Flow"])
 
