@@ -570,10 +570,10 @@ def _show_results(result: CoolingAnalysisResult):
     _section("Results Plots")
     tab1, tab2, tab3, tab4 = st.tabs(["Temperature", "Heat Transfer",
                                        "Pressure & Quality", "Regime Map"])
-    with tab1: st.plotly_chart(_plot_temperature(result), use_container_width=True)
-    with tab2: st.plotly_chart(_plot_ht(result),          use_container_width=True)
-    with tab3: st.plotly_chart(_plot_pq(result),          use_container_width=True)
-    with tab4: st.plotly_chart(_plot_regime(result),      use_container_width=True)
+    with tab1: st.plotly_chart(_plot_temperature(result), use_container_width=True, theme=None)
+    with tab2: st.plotly_chart(_plot_ht(result),          use_container_width=True, theme=None)
+    with tab3: st.plotly_chart(_plot_pq(result),          use_container_width=True, theme=None)
+    with tab4: st.plotly_chart(_plot_regime(result),      use_container_width=True, theme=None)
 
     if result.warnings:
         with st.expander(f"{len(result.warnings)} Warnings"):
@@ -675,7 +675,7 @@ def render_cooling_page():
         qfn, xa, qa = _make_q_profile(q_pk*1e6, x_th, x_end)
 
         with st.expander("Preview heat flux profile"):
-            st.plotly_chart(_plot_q_preview(xa, qa, x_th), use_container_width=True)
+            st.plotly_chart(_plot_q_preview(xa, qa, x_th), use_container_width=True, theme=None)
 
         if st.button("▶  Run Cooling Analysis", type="primary"):
             with st.spinner("Running 1-D marching solver…"):
@@ -809,6 +809,6 @@ def render_cooling_page():
             prog.empty()
             if results:
                 st.plotly_chart(_plot_parametric(sweep, ok_sv, results),
-                                use_container_width=True)
+                                use_container_width=True, theme=None)
             else:
                 st.error("All sweep points failed. Check inputs.")

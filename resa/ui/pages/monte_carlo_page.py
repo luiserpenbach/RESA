@@ -106,7 +106,7 @@ def render_monte_carlo_page():
 
                     plotter = MonteCarloPlotter(theme=DarkTheme())
                     fig = plotter.create_histogram(isp_samples, "Isp (vacuum)", "s")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, theme=None)
                 except Exception as e:
                     st.warning(f"Could not render plots: {e}")
 

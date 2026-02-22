@@ -394,7 +394,7 @@ def render_3d_preview(generator):
             DarkTheme().apply_to_figure(fig)
         except ImportError:
             pass
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
     except Exception as e:
         st.warning(f"3D preview unavailable: {e}")
@@ -429,4 +429,4 @@ def render_3d_preview(generator):
             DarkTheme().apply_to_figure(fig)
         except ImportError:
             pass
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
