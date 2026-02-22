@@ -91,7 +91,7 @@ class EngineDashboardPlotter:
                 x=x_mm, y=y_mm,
                 name="Chamber Wall",
                 mode='lines',
-                line=dict(color='black', width=3),
+                line=dict(color=self.theme.steel, width=2.5),
                 fill='tozeroy',
                 fillcolor='rgba(184, 115, 51, 0.15)',
                 hovertemplate="X: %{x:.1f} mm<br>R: %{y:.2f} mm<extra></extra>"
@@ -171,7 +171,7 @@ class EngineDashboardPlotter:
                 x=x_mm, y=cooling['velocity'],
                 name="Velocity",
                 mode='lines',
-                line=dict(color='black', width=2),
+                line=dict(color=self.theme.coolant, width=2),
                 hovertemplate="X: %{x:.1f} mm<br>V: %{y:.1f} m/s<extra></extra>"
             ),
             row=4, col=1, secondary_y=False
@@ -424,9 +424,9 @@ class CrossSectionPlotter:
             x=0, y=0,
             text=f"N = {n_channels}<br>X = {x_pos:.1f} mm",
             showarrow=False,
-            font=dict(size=12, color='black'),
-            bgcolor='rgba(255,255,255,0.8)',
-            bordercolor='black',
+            font=dict(size=12),
+            bgcolor=self.theme.paper_background,
+            bordercolor=self.theme.grid_color,
             borderwidth=1,
             borderpad=4,
         )
@@ -473,6 +473,8 @@ class CrossSectionPlotter:
             height=700,
             margin=dict(l=20, r=20, t=60, b=20)
         )
+
+        self.theme.apply_to_figure(fig)
 
         return fig
 

@@ -98,7 +98,7 @@ def render_configuration_tab():
         t_in = st.number_input("Inlet Temperature [K]", min_value=200.0, max_value=400.0, value=290.0)
 
     # Save configuration
-    if st.button("Save Configuration", type="primary", use_container_width=True, theme=None):
+    if st.button("Save Configuration", type="primary", use_container_width=True):
         try:
             from resa.core.config import EngineConfig
 
@@ -162,7 +162,7 @@ def render_run_tab():
 
     st.divider()
 
-    if st.button("Run Full Design", type="primary", use_container_width=True, theme=None):
+    if st.button("Run Full Design", type="primary", use_container_width=True):
         with st.spinner("Running combustion analysis..."):
             progress = st.progress(0)
 
