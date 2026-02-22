@@ -246,8 +246,9 @@ def render_results_tab():
     with viz_tabs[0]:
         try:
             from resa.visualization.engine_plots import EngineDashboardPlotter
+            from resa.visualization.themes import DarkTheme
 
-            plotter = EngineDashboardPlotter()
+            plotter = EngineDashboardPlotter(theme=DarkTheme())
             fig = plotter.create_figure(result)
             st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
@@ -256,9 +257,10 @@ def render_results_tab():
     with viz_tabs[1]:
         try:
             from resa.visualization.engine_plots import CrossSectionPlotter
+            from resa.visualization.themes import DarkTheme
 
             if result.channel_geometry:
-                plotter = CrossSectionPlotter()
+                plotter = CrossSectionPlotter(theme=DarkTheme())
                 throat_idx = np.argmin(result.nozzle_geometry.y_full)
                 fig = plotter.create_figure(result.channel_geometry, station_idx=throat_idx)
                 st.plotly_chart(fig, use_container_width=True)
@@ -270,9 +272,10 @@ def render_results_tab():
     with viz_tabs[2]:
         try:
             from resa.visualization.engine_3d import Engine3DViewer
+            from resa.visualization.themes import DarkTheme
 
             if result.nozzle_geometry is not None:
-                viewer = Engine3DViewer()
+                viewer = Engine3DViewer(theme=DarkTheme(), dark_mode=True)
                 fig = viewer.render_nozzle(result.nozzle_geometry)
                 st.plotly_chart(fig, use_container_width=True)
             else:

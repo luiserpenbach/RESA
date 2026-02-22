@@ -5,7 +5,7 @@ import numpy as np
 
 def render_throttle_page():
     """Render the throttle mapping page."""
-    st.title("⚡ Throttle Map")
+    st.title("Throttle Map")
 
     if not st.session_state.get('design_result'):
         st.warning("Please run an engine design first.")
@@ -26,7 +26,7 @@ def render_throttle_page():
         ["Oxidizer Only (Deep Throttle)", "Both Proportional", "Fuel Only"]
     )
 
-    if st.button("🚀 Generate Throttle Map", type="primary"):
+    if st.button("Generate Throttle Map", type="primary"):
         with st.spinner("Generating throttle curve..."):
             # Generate sample data
             throttle_pcts = np.linspace(min_throttle, max_throttle, n_points)
@@ -46,7 +46,9 @@ def render_throttle_page():
                         'T_wall_max': 600 + 200 * (pct/100)
                     })
 
-                plotter = ThrottleCurvePlotter()
+                from resa.visualization.themes import DarkTheme
+
+                plotter = ThrottleCurvePlotter(theme=DarkTheme())
                 fig = plotter.create_figure(throttle_data)
                 st.plotly_chart(fig, use_container_width=True)
 

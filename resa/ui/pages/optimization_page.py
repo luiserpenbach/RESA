@@ -4,7 +4,7 @@ import streamlit as st
 
 def render_optimization_page():
     """Render the optimization page."""
-    st.title("🎯 Multi-Point Optimization")
+    st.title("Multi-Point Optimization")
 
     st.subheader("Optimization Setup")
 
@@ -42,7 +42,7 @@ def render_optimization_page():
     algorithm = st.selectbox("Optimizer", ["Nelder-Mead", "Powell", "SLSQP", "Differential Evolution"])
     max_iter = st.number_input("Max Iterations", 10, 500, 100)
 
-    if st.button("🎯 Run Optimization", type="primary"):
+    if st.button("Run Optimization", type="primary"):
         with st.spinner("Optimizing..."):
             st.info("Optimization would run here with selected parameters and constraints.")
             st.success("Optimization complete! (Demo mode)")

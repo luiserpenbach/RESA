@@ -445,6 +445,11 @@ def render_results_tab():
         margin=dict(l=50, r=50, t=50, b=50)
     )
 
+    try:
+        from resa.visualization.themes import DarkTheme
+        DarkTheme().apply_to_figure(fig)
+    except ImportError:
+        pass
     st.plotly_chart(fig, use_container_width=True)
 
     # Export options

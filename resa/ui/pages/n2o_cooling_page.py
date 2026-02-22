@@ -47,11 +47,23 @@ except ImportError:
     except ImportError:
         COOLING_AVAILABLE = False
 
+try:
+    from resa.visualization.themes import DarkTheme as _DarkTheme
+    _DARK_THEME = _DarkTheme()
+except ImportError:
+    _DARK_THEME = None
+
+
+def _apply_dark(fig):
+    if _DARK_THEME is not None:
+        _DARK_THEME.apply_to_figure(fig)
+    return fig
+
 
 def render_n2o_cooling_page():
     """Main render function for N2O cooling analysis page."""
 
-    st.title("❄️ N2O Two-Phase Cooling Analysis")
+    st.title("N2O Two-Phase Cooling Analysis")
 
     st.markdown("""
     Detailed regenerative cooling analysis with proper two-phase flow physics for N2O coolant.
@@ -262,6 +274,7 @@ def render_parametric_study():
                     T_inlet, q_flux_peak * 1e6
                 )
 
+        _apply_dark(fig)
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -597,7 +610,7 @@ def display_results(result):
 
     # Warnings
     if result.warnings:
-        with st.expander(f"⚠️ Warnings ({len(result.warnings)})", expanded=True):
+        with st.expander(f"{len(result.warnings)} Warnings", expanded=True):
             for w in result.warnings[:10]:
                 st.warning(w)
             if len(result.warnings) > 10:
@@ -658,6 +671,7 @@ def display_results(result):
             yaxis_title="Temperature [°C]",
             height=400
         )
+        _apply_dark(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
@@ -680,6 +694,7 @@ def display_results(result):
         fig.update_yaxes(title_text="h [kW/m²-K]", row=1, col=1)
         fig.update_yaxes(title_text="q/q_CHF [-]", row=1, col=2)
         fig.update_layout(height=400)
+        _apply_dark(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
@@ -702,6 +717,7 @@ def display_results(result):
         fig.update_yaxes(title_text="Pressure [bar]", row=1, col=1)
         fig.update_yaxes(title_text="Quality x [-]", row=1, col=2)
         fig.update_layout(height=400)
+        _apply_dark(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     with tab4:
@@ -744,14 +760,15 @@ def display_results(result):
             height=300,
             showlegend=True
         )
+        _apply_dark(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     # Feasibility assessment
     st.divider()
     if result.is_feasible:
-        st.success("✅ Design appears feasible within safety margins")
+        st.success("Design appears feasible within safety margins")
     else:
-        st.error("❌ Design has safety concerns - review warnings and consider modifications")
+        st.error("Design has safety concerns — review warnings and consider modifications")
 
 
 # Entry point for RESA integration

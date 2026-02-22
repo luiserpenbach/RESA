@@ -4,7 +4,7 @@ import streamlit as st
 
 def render_analysis_page():
     """Render the analysis page."""
-    st.title("📊 Performance Analysis")
+    st.title("Performance Analysis")
 
     if not st.session_state.get('design_result'):
         st.warning("Please run an engine design first.")

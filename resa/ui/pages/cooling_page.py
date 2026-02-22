@@ -129,7 +129,7 @@ def _badge(text, kind="info"):
 # ── Model documentation panel ──────────────────────────────────────────────
 
 def _render_model_docs():
-    with st.expander("📐  Physical Models & Assumptions  —  click to expand", expanded=False):
+    with st.expander("Physical Models & Assumptions  —  click to expand", expanded=False):
         t = st.tabs(["Hot-Gas Side","Single-Phase HT","Boiling HT",
                      "Critical Heat Flux","Supercritical","Pressure Drop",
                      "Fluid Properties","Key Assumptions"])
@@ -567,23 +567,23 @@ def _show_results(result: CoolingAnalysisResult):
                 unsafe_allow_html=True)
 
     st.divider()
-    _section("Results Plots", "📈")
-    tab1, tab2, tab3, tab4 = st.tabs(["🌡 Temperature","🔥 Heat Transfer",
-                                       "💧 Pressure & Quality","🗺 Regime Map"])
+    _section("Results Plots")
+    tab1, tab2, tab3, tab4 = st.tabs(["Temperature", "Heat Transfer",
+                                       "Pressure & Quality", "Regime Map"])
     with tab1: st.plotly_chart(_plot_temperature(result), use_container_width=True)
     with tab2: st.plotly_chart(_plot_ht(result),          use_container_width=True)
     with tab3: st.plotly_chart(_plot_pq(result),          use_container_width=True)
     with tab4: st.plotly_chart(_plot_regime(result),      use_container_width=True)
 
     if result.warnings:
-        with st.expander(f"⚠  {len(result.warnings)} warnings"):
+        with st.expander(f"{len(result.warnings)} Warnings"):
             for w in result.warnings[:50]:
                 st.markdown(f"<small style='color:#f0a000;'>• {w}</small>",
                             unsafe_allow_html=True)
     for e in result.errors:
         st.error(e)
 
-    with st.expander("📋  Station Data Table"):
+    with st.expander("Station Data Table"):
         import pandas as pd
         step = max(1, len(result.stations)//50)
         rows = [{"x [m]": f"{s.x:.4f}",
@@ -602,7 +602,7 @@ def _show_results(result: CoolingAnalysisResult):
 
 def render_cooling_page():
     st.markdown(
-        '<h1 style="font-size:1.9rem;">❄️  Regenerative Cooling Analysis</h1>'
+        '<h1 style="font-size:1.9rem;">Regenerative Cooling Analysis</h1>'
         '<p style="color:#4a6a8a;margin-top:-0.4rem;">'
         'Two-phase N₂O cooling — full phase-aware heat transfer physics</p>',
         unsafe_allow_html=True,
@@ -628,7 +628,7 @@ def render_cooling_page():
     # QUICK ANALYSIS
     # ══════════════════════════════════════════════════════════════════
     if mode == "Quick Analysis":
-        _section("Operating Conditions", "⚙️")
+        _section("Operating Conditions")
         c1, c2, c3 = st.columns(3)
         with c1:
             P_in  = st.number_input("Inlet pressure [bar]", 10.0, 200.0, 60.0, 5.0)
@@ -651,7 +651,7 @@ def render_cooling_page():
             if kw is None:
                 kw = st.number_input("Custom k_wall [W/mK]", 5.0, 500.0, 50.0, 5.0)
 
-        _section("Engine Contour", "📐")
+        _section("Engine Contour")
         c1, c2 = st.columns(2)
         with c1:
             r_ch = st.number_input("Chamber radius [m]", 0.01, 0.5, 0.06, 0.005)
@@ -661,7 +661,7 @@ def render_cooling_page():
             L_ch  = st.number_input("Chamber length [m]", 0.05, 1.0, 0.12, 0.01)
             L_noz = st.number_input("Nozzle length [m]",  0.03, 0.5, 0.12, 0.01)
 
-        _section("Channel Geometry", "🔧")
+        _section("Channel Geometry")
         c1, c2 = st.columns(2)
         with c1:
             n_ch    = int(st.number_input("Number of channels", 10, 200, 40, 5, format="%d"))
@@ -705,7 +705,7 @@ def render_cooling_page():
                 f"Thrust {cfg.thrust_n:.0f} N, Pc {cfg.pc_bar:.1f} bar, "
                 f"ṁ = {dr.massflow_total:.3f} kg/s")
 
-        _section("Cooling Parameters", "⚙️")
+        _section("Cooling Parameters")
         c1, c2, c3 = st.columns(3)
         with c1:
             P_in  = st.number_input("Inlet pressure [bar]",
@@ -756,7 +756,7 @@ def render_cooling_page():
     # PARAMETRIC SWEEP
     # ══════════════════════════════════════════════════════════════════
     elif mode == "Parametric Sweep":
-        _section("Baseline Configuration", "⚙️")
+        _section("Baseline Configuration")
         c1, c2, c3 = st.columns(3)
         with c1:
             P0    = st.number_input("Baseline inlet pressure [bar]", 20.0, 200.0, 60.0, 5.0)
@@ -771,7 +771,7 @@ def render_cooling_page():
             w0    = st.number_input("Throat width [mm]", 0.2, 5.0, 1.0, 0.1)
             q_pk  = st.number_input("Peak heat flux [MW/m²]", 0.5, 100.0, 15.0, 0.5)
 
-        _section("Sweep Parameter", "📊")
+        _section("Sweep Parameter")
         c1, c2 = st.columns(2)
         with c1:
             sweep = st.selectbox("Sweep parameter",
