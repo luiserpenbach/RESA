@@ -98,7 +98,7 @@ def render_configuration_tab():
         t_in = st.number_input("Inlet Temperature [K]", min_value=200.0, max_value=400.0, value=290.0)
 
     # Save configuration
-    if st.button("Save Configuration", type="primary", use_container_width=True):
+    if st.button("Save Configuration", type="primary", use_container_width=True, theme=None):
         try:
             from resa.core.config import EngineConfig
 
@@ -162,7 +162,7 @@ def render_run_tab():
 
     st.divider()
 
-    if st.button("Run Full Design", type="primary", use_container_width=True):
+    if st.button("Run Full Design", type="primary", use_container_width=True, theme=None):
         with st.spinner("Running combustion analysis..."):
             progress = st.progress(0)
 
@@ -250,7 +250,7 @@ def render_results_tab():
 
             plotter = EngineDashboardPlotter(theme=DarkTheme())
             fig = plotter.create_figure(result)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
         except Exception as e:
             st.error(f"Could not render dashboard: {e}")
 
@@ -263,7 +263,7 @@ def render_results_tab():
                 plotter = CrossSectionPlotter(theme=DarkTheme())
                 throat_idx = np.argmin(result.nozzle_geometry.y_full)
                 fig = plotter.create_figure(result.channel_geometry, station_idx=throat_idx)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, theme=None)
             else:
                 st.info("Channel geometry not available")
         except Exception as e:
@@ -277,7 +277,7 @@ def render_results_tab():
             if result.nozzle_geometry is not None:
                 viewer = Engine3DViewer(theme=DarkTheme(), dark_mode=True)
                 fig = viewer.render_nozzle(result.nozzle_geometry)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, theme=None)
             else:
                 st.warning("Nozzle geometry not available")
         except Exception as e:

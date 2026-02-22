@@ -450,7 +450,7 @@ def render_results_tab():
         DarkTheme().apply_to_figure(fig)
     except ImportError:
         pass
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     # Export options
     st.markdown("---")

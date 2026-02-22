@@ -50,7 +50,7 @@ def render_throttle_page():
 
                 plotter = ThrottleCurvePlotter(theme=DarkTheme())
                 fig = plotter.create_figure(throttle_data)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, theme=None)
 
                 st.session_state.throttle_results = throttle_data
                 st.success("Throttle map generated!")

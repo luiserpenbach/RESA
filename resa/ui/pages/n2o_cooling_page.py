@@ -275,7 +275,7 @@ def render_parametric_study():
                 )
 
         _apply_dark(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
 # =============================================================================
@@ -672,7 +672,7 @@ def display_results(result):
             height=400
         )
         _apply_dark(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
     with tab2:
         fig = make_subplots(rows=1, cols=2,
@@ -695,7 +695,7 @@ def display_results(result):
         fig.update_yaxes(title_text="q/q_CHF [-]", row=1, col=2)
         fig.update_layout(height=400)
         _apply_dark(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
     with tab3:
         fig = make_subplots(rows=1, cols=2,
@@ -718,7 +718,7 @@ def display_results(result):
         fig.update_yaxes(title_text="Quality x [-]", row=1, col=2)
         fig.update_layout(height=400)
         _apply_dark(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
     with tab4:
         # Color map for regimes
@@ -761,7 +761,7 @@ def display_results(result):
             showlegend=True
         )
         _apply_dark(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
     # Feasibility assessment
     st.divider()
