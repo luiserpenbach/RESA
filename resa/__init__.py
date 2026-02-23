@@ -77,7 +77,10 @@ from resa.core.engine import Engine
 
 # Visualization
 from resa.visualization.themes import PlotTheme, EngineeringTheme, DarkTheme
-from resa.visualization.engine_plots import EngineDashboardPlotter, CrossSectionPlotter
+from resa.visualization.engine_plots import (
+    EngineDashboardPlotter, CrossSectionPlotter,
+    NozzleContourPlotter, GasDynamicsPlotter,
+)
 from resa.visualization.engine_3d import Engine3DViewer
 
 # Reporting
@@ -110,6 +113,8 @@ __all__ = [
     "DarkTheme",
     "EngineDashboardPlotter",
     "CrossSectionPlotter",
+    "NozzleContourPlotter",
+    "GasDynamicsPlotter",
     "Engine3DViewer",
     # Reporting
     "HTMLReportGenerator",

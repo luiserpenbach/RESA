@@ -78,24 +78,33 @@ class EngineConfig:
     engine_name: str = "Unnamed Engine"
     version: str = "1.0"
     designer: str = ""
-    
+    description: str = ""
+
     # === PROPELLANTS ===
     fuel: str = "Ethanol90"
     oxidizer: str = "N2O"
-    
+    fuel_injection_temp_k: float = 298.0      # [K] Fuel injection temperature
+    oxidizer_injection_temp_k: float = 278.0  # [K] Oxidizer injection temperature
+
     # === PERFORMANCE TARGETS ===
     thrust_n: float = 1000.0
     pc_bar: float = 20.0
     mr: float = 4.0
     eff_combustion: float = 0.95
-    
+
+    # === EFFICIENCIES ===
+    eff_nozzle_divergence: float = 0.983  # Nozzle divergence efficiency η_div
+    freeze_at_throat: bool = False         # Frozen equilibrium downstream of throat
+
     # === NOZZLE DESIGN ===
+    nozzle_type: Literal['bell', 'conical', 'ideal'] = 'bell'
     throat_diameter: float = 0.0    # [m] If 0, calculated from thrust
     expansion_ratio: float = 0.0    # If 0, calculated for optimal at p_exit
     p_exit_bar: float = 1.013       # Design exit pressure
     L_star: float = 1100.0          # [mm]
     contraction_ratio: float = 10.0
-    theta_convergent: float = 30.0  # [deg]
+    theta_convergent: float = 30.0  # [deg] Convergent half-angle
+    theta_exit: float = 15.0        # [deg] Exit half-angle (conical nozzles)
     bell_fraction: float = 0.8
     
     # === COOLING SYSTEM ===
@@ -175,12 +184,30 @@ class EngineConfig:
             result.add_warning(f"Mixture ratio {self.mr} is fuel-rich")
         if self.mr > 10:
             result.add_warning(f"Mixture ratio {self.mr} is very oxidizer-rich")
-        
+
         if self.eff_combustion < 0.8:
             result.add_warning(f"Combustion efficiency {self.eff_combustion} is low")
         if self.eff_combustion > 1.0:
             result.add_error("Combustion efficiency cannot exceed 1.0")
-        
+
+        # === EFFICIENCY CHECKS ===
+        if self.eff_nozzle_divergence < 0.95:
+            result.add_warning(
+                f"Nozzle divergence efficiency {self.eff_nozzle_divergence:.3f} is low (<0.95)"
+            )
+        if self.eff_nozzle_divergence > 1.0:
+            result.add_error("Nozzle divergence efficiency cannot exceed 1.0")
+
+        # === INJECTION TEMPERATURE CHECKS ===
+        if self.fuel_injection_temp_k < 220:
+            result.add_warning(
+                f"Fuel injection temperature {self.fuel_injection_temp_k} K is cryogenic"
+            )
+        if self.oxidizer_injection_temp_k < 220:
+            result.add_warning(
+                f"Oxidizer injection temperature {self.oxidizer_injection_temp_k} K is cryogenic"
+            )
+
         return result
     
     @classmethod
@@ -212,23 +239,31 @@ class EngineConfig:
             engine_name=meta.get('engine_name', data.get('engine_name', 'Unnamed')),
             version=meta.get('version', '1.0'),
             designer=meta.get('designer', ''),
-            
+            description=meta.get('description', ''),
+
             fuel=prop.get('fuel', 'Ethanol90'),
             oxidizer=prop.get('oxidizer', 'N2O'),
+            fuel_injection_temp_k=float(prop.get('fuel_injection_temp_k', 298.0)),
+            oxidizer_injection_temp_k=float(prop.get('oxidizer_injection_temp_k', 278.0)),
             thrust_n=float(prop.get('thrust_n', 1000)),
             pc_bar=float(prop.get('pc_bar', prop.get('chamber_pressure_bar', 20))),
             mr=float(prop.get('mr', prop.get('mixture_ratio', 4))),
-            eff_combustion=float(prop.get('eff_combustion', 
+            eff_combustion=float(prop.get('eff_combustion',
                                          prop.get('combustion_efficiency', 0.95))),
-            
+
+            eff_nozzle_divergence=float(prop.get('eff_nozzle_divergence', 0.983)),
+            freeze_at_throat=bool(prop.get('freeze_at_throat', False)),
+
+            nozzle_type=nozz.get('nozzle_type', 'bell'),
             throat_diameter=float(nozz.get('throat_diameter', 0)),
             expansion_ratio=float(nozz.get('expansion_ratio', 0)),
-            p_exit_bar=float(nozz.get('design_ambient_pressure_bar', 
+            p_exit_bar=float(nozz.get('design_ambient_pressure_bar',
                                      nozz.get('p_exit_bar', 1.013))),
             L_star=float(nozz.get('L_star_mm', nozz.get('L_star', 1100))),
             contraction_ratio=float(nozz.get('contraction_ratio', 10)),
-            theta_convergent=float(nozz.get('convergent_angle', 
+            theta_convergent=float(nozz.get('convergent_angle',
                                            nozz.get('theta_convergent', 30))),
+            theta_exit=float(nozz.get('theta_exit', 15.0)),
             bell_fraction=float(nozz.get('bell_fraction', 0.8)),
             
             coolant_name=cool.get('coolant', cool.get('coolant_name', 'REFPROP::NitrousOxide')),
@@ -264,22 +299,29 @@ class EngineConfig:
                 'engine_name': self.engine_name,
                 'version': self.version,
                 'designer': self.designer,
+                'description': self.description,
             },
             'propulsion': {
                 'fuel': self.fuel,
                 'oxidizer': self.oxidizer,
+                'fuel_injection_temp_k': self.fuel_injection_temp_k,
+                'oxidizer_injection_temp_k': self.oxidizer_injection_temp_k,
                 'thrust_n': self.thrust_n,
                 'pc_bar': self.pc_bar,
                 'mr': self.mr,
                 'eff_combustion': self.eff_combustion,
+                'eff_nozzle_divergence': self.eff_nozzle_divergence,
+                'freeze_at_throat': self.freeze_at_throat,
             },
             'nozzle': {
+                'nozzle_type': self.nozzle_type,
                 'throat_diameter': self.throat_diameter,
                 'expansion_ratio': self.expansion_ratio,
                 'p_exit_bar': self.p_exit_bar,
                 'L_star_mm': self.L_star,
                 'contraction_ratio': self.contraction_ratio,
                 'theta_convergent': self.theta_convergent,
+                'theta_exit': self.theta_exit,
                 'bell_fraction': self.bell_fraction,
             },
             'cooling': {

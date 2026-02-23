@@ -158,27 +158,33 @@ class Engine:
                 from resa.physics.fluids import CoolPropFluid
                 self._fluid_provider = CoolPropFluid(self.config.coolant_name)
 
-    def design(self) -> EngineDesignResult:
+    def design(self, with_cooling: bool = True) -> EngineDesignResult:
         """
-        Run full design point analysis.
+        Run design point analysis.
 
         This calculates:
         1. Combustion properties from CEA
         2. Optimal/specified expansion ratio
         3. Throat sizing from thrust requirement
         4. Nozzle contour geometry
-        5. Cooling channel geometry
+        5. Cooling channel geometry (if with_cooling=True)
         6. Gas dynamics along nozzle
-        7. Regenerative cooling analysis
+        7. Regenerative cooling analysis (if with_cooling=True)
+
+        Args:
+            with_cooling: If True (default), runs the full cooling solver pipeline.
+                          If False, skips cooling — returns combustion + geometry only.
+                          Use False for fast design iterations on the Engine Design page.
 
         Returns:
-            Complete EngineDesignResult with all analysis data
+            EngineDesignResult. cooling and channel_geometry are None when with_cooling=False.
         """
         self._init_solvers()
 
         logger.info(
             f"Running design: Thrust={self.config.thrust_n}N, "
-            f"Pc={self.config.pc_bar}bar, MR={self.config.mr}"
+            f"Pc={self.config.pc_bar}bar, MR={self.config.mr}, "
+            f"cooling={'on' if with_cooling else 'off'}"
         )
 
         # Step 1: Combustion analysis
@@ -204,14 +210,16 @@ class Engine:
         # Step 4: Generate nozzle geometry
         self._nozzle_geometry = self._generate_nozzle(throat_radius, eps_design)
 
-        # Step 5: Generate channel geometry
-        self._channel_geometry = self._generate_channels()
-
-        # Step 6: Gas dynamics analysis
+        # Step 5: Gas dynamics analysis (always runs — needed for plots)
         mach_numbers, T_gas_recovery, h_gas = self._analyze_gas_dynamics(combustion)
 
-        # Step 7: Cooling analysis
-        cooling = self._run_cooling(mass_flow, T_gas_recovery, h_gas)
+        # Steps 6–7: Cooling (optional)
+        cooling = None
+        channel_geometry = None
+        if with_cooling:
+            channel_geometry = self._generate_channels()
+            self._channel_geometry = channel_geometry
+            cooling = self._run_cooling(mass_flow, T_gas_recovery, h_gas)
 
         # Build result
         result = EngineDesignResult(
@@ -232,15 +240,14 @@ class Engine:
             expansion_ratio=eps_design,
             combustion=combustion,
             nozzle_geometry=self._nozzle_geometry,
-            channel_geometry=self._channel_geometry,
+            channel_geometry=channel_geometry,
             cooling=cooling,
             mach_numbers=mach_numbers,
             T_gas_recovery=T_gas_recovery,
             h_gas=h_gas,
         )
 
-        # Check thermal limits
-        if cooling.max_wall_temp > 800:
+        if cooling and cooling.max_wall_temp > 800:
             result.add_warning(
                 f"Max wall temperature {cooling.max_wall_temp:.0f} K exceeds "
                 "typical copper limit (800 K)"
