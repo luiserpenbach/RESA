@@ -491,6 +491,254 @@ class CrossSectionPlotter:
         )
 
 
+# =============================================================================
+# NOZZLE CONTOUR PLOTTER  (no cooling data required)
+# =============================================================================
+
+class NozzleContourPlotter:
+    """
+    Clean nozzle x-y profile with annotated key stations and area ratio overlay.
+
+    Works without cooling data — only requires nozzle_geometry from EngineDesignResult.
+
+    Example:
+        plotter = NozzleContourPlotter(theme=DarkTheme())
+        fig = plotter.create_figure(result)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+    """
+
+    def __init__(self, theme: Optional[PlotTheme] = None):
+        self.theme = theme or DEFAULT_THEME
+
+    def create_figure(self, result: 'EngineDesignResult') -> go.Figure:
+        """
+        Create nozzle contour figure.
+
+        Args:
+            result: EngineDesignResult (cooling not required)
+
+        Returns:
+            Plotly Figure with contour + area ratio overlay
+        """
+        geo = result.nozzle_geometry
+        x_mm = geo.x_full * 1000
+        y_mm = geo.y_full * 1000
+
+        throat_idx = int(np.argmin(y_mm))
+        throat_x = x_mm[throat_idx]
+        throat_r = y_mm[throat_idx]
+
+        # Area ratio A/At at each station
+        at = np.pi * throat_r ** 2
+        area_ratio = (np.pi * y_mm ** 2) / at
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # ── Upper wall fill ──────────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([x_mm, x_mm[::-1]]),
+            y=np.concatenate([y_mm, np.zeros_like(y_mm)]),
+            fill='toself',
+            fillcolor='rgba(70, 90, 120, 0.25)',
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo='skip',
+            name='_fill',
+        ), secondary_y=False)
+
+        # ── Lower wall fill (mirror) ─────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([x_mm, x_mm[::-1]]),
+            y=np.concatenate([-y_mm, np.zeros_like(y_mm)]),
+            fill='toself',
+            fillcolor='rgba(70, 90, 120, 0.25)',
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo='skip',
+            name='_fill_lower',
+        ), secondary_y=False)
+
+        # ── Wall contour (upper) ─────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=y_mm,
+            mode='lines',
+            name='Wall contour',
+            line=dict(color=self.theme.steel, width=2),
+            hovertemplate='x=%{x:.1f} mm  r=%{y:.2f} mm<extra></extra>',
+        ), secondary_y=False)
+
+        # ── Wall contour (lower mirror) ───────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=-y_mm,
+            mode='lines',
+            showlegend=False,
+            line=dict(color=self.theme.steel, width=2),
+            hoverinfo='skip',
+        ), secondary_y=False)
+
+        # ── Area ratio overlay ────────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=area_ratio,
+            mode='lines',
+            name='A/At',
+            line=dict(color=self.theme.accent, width=1.5, dash='dot'),
+            hovertemplate='x=%{x:.1f} mm  A/At=%{y:.3f}<extra></extra>',
+        ), secondary_y=True)
+
+        # ── Station markers ───────────────────────────────────────────────────
+        stations = [
+            (x_mm[0],      y_mm[0],      f"Chamber<br>Ø {2*y_mm[0]:.1f} mm"),
+            (throat_x,     throat_r,     f"Throat<br>Ø {2*throat_r:.1f} mm"),
+            (x_mm[-1],     y_mm[-1],     f"Exit<br>Ø {2*y_mm[-1]:.1f} mm"),
+        ]
+        station_colors = [self.theme.primary, self.theme.danger, self.theme.secondary]
+        for (sx, sy, label), color in zip(stations, station_colors):
+            fig.add_vline(
+                x=sx, line=dict(color=color, width=1, dash='dash'),
+                annotation_text=label,
+                annotation_position="top",
+                annotation_font_size=9,
+                annotation_font_color=color,
+            )
+
+        # ── Layout ───────────────────────────────────────────────────────────
+        max_r = float(np.max(y_mm))
+        fig.update_yaxes(
+            title_text="Radius [mm]", row=1, col=1, secondary_y=False,
+            range=[-max_r * 1.45, max_r * 1.45],
+        )
+        fig.update_yaxes(
+            title_text="A / At", row=1, col=1, secondary_y=True,
+            title_font=dict(color=self.theme.accent),
+            tickfont=dict(color=self.theme.accent),
+            rangemode='tozero',
+        )
+        fig.update_xaxes(title_text="Axial Position [mm]")
+        fig.update_layout(
+            height=340,
+            margin=dict(l=50, r=60, t=30, b=40),
+            showlegend=True,
+            legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10)),
+            hovermode='x unified',
+            title=dict(text="Nozzle Contour", font=dict(size=13), x=0.5),
+        )
+        self.theme.apply_to_figure(fig)
+        return fig
+
+    def to_html(self, fig: go.Figure, include_plotlyjs: str = 'cdn', full_html: bool = False) -> str:
+        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=full_html)
+
+
+# =============================================================================
+# GAS DYNAMICS PLOTTER  (no cooling data required)
+# =============================================================================
+
+class GasDynamicsPlotter:
+    """
+    Mach number, P/Pc and T/Tc profiles along the nozzle axis.
+
+    Works without cooling data — uses mach_numbers, T_gas_recovery and
+    combustion data from EngineDesignResult.
+
+    Example:
+        plotter = GasDynamicsPlotter(theme=DarkTheme())
+        fig = plotter.create_figure(result)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+    """
+
+    def __init__(self, theme: Optional[PlotTheme] = None):
+        self.theme = theme or DEFAULT_THEME
+
+    def create_figure(self, result: 'EngineDesignResult') -> go.Figure:
+        """
+        Create gas dynamics profile figure.
+
+        Args:
+            result: EngineDesignResult (cooling not required)
+
+        Returns:
+            Plotly Figure with Mach, P/Pc, T/Tc
+        """
+        geo = result.nozzle_geometry
+        x_mm = geo.x_full * 1000
+        mach = result.mach_numbers
+        gamma = result.combustion.gamma
+        T_c = result.combustion.T_combustion
+
+        # Isentropic pressure and temperature ratios
+        p_ratio = (1 + (gamma - 1) / 2 * mach ** 2) ** (-gamma / (gamma - 1))
+        t_ratio = 1 / (1 + (gamma - 1) / 2 * mach ** 2)
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # ── Mach number ───────────────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=mach,
+            mode='lines',
+            name='Mach',
+            line=dict(color=self.theme.accent, width=2),
+            hovertemplate='x=%{x:.1f} mm  M=%{y:.3f}<extra></extra>',
+        ), secondary_y=False)
+
+        # ── P/Pc ─────────────────────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=p_ratio,
+            mode='lines',
+            name='P/Pc',
+            line=dict(color=self.theme.primary, width=1.8),
+            hovertemplate='x=%{x:.1f} mm  P/Pc=%{y:.4f}<extra></extra>',
+        ), secondary_y=True)
+
+        # ── T/Tc ─────────────────────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=t_ratio,
+            mode='lines',
+            name='T/Tc',
+            line=dict(color=self.theme.secondary, width=1.8, dash='dash'),
+            hovertemplate='x=%{x:.1f} mm  T/Tc=%{y:.4f}<extra></extra>',
+        ), secondary_y=True)
+
+        # ── Throat marker ─────────────────────────────────────────────────────
+        throat_idx = int(np.argmin(geo.y_full))
+        throat_x = x_mm[throat_idx]
+        fig.add_vline(
+            x=throat_x,
+            line=dict(color=self.theme.danger, width=1, dash='dash'),
+            annotation_text="Throat  M=1",
+            annotation_position="top right",
+            annotation_font_size=9,
+            annotation_font_color=self.theme.danger,
+        )
+
+        # ── Layout ───────────────────────────────────────────────────────────
+        fig.update_yaxes(
+            title_text="Mach Number", secondary_y=False,
+            title_font=dict(color=self.theme.accent),
+            tickfont=dict(color=self.theme.accent),
+            rangemode='tozero',
+        )
+        fig.update_yaxes(
+            title_text="P/Pc  ·  T/Tc", secondary_y=True,
+            title_font=dict(color=self.theme.primary),
+            tickfont=dict(color=self.theme.primary),
+            range=[0, 1.05],
+        )
+        fig.update_xaxes(title_text="Axial Position [mm]")
+        fig.update_layout(
+            height=340,
+            margin=dict(l=50, r=60, t=30, b=40),
+            showlegend=True,
+            legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10)),
+            hovermode='x unified',
+            title=dict(text="Gas Dynamics Profile", font=dict(size=13), x=0.5),
+        )
+        self.theme.apply_to_figure(fig)
+        return fig
+
+    def to_html(self, fig: go.Figure, include_plotlyjs: str = 'cdn', full_html: bool = False) -> str:
+        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=full_html)
+
+
 class ContourPlotter:
     """
     Visualizes engine contour with temperature overlay.

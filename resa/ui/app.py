@@ -32,8 +32,8 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 
 .main .block-container {
-    padding-top: 1.8rem;
-    padding-bottom: 2rem;
+    padding-top: 1.2rem;
+    padding-bottom: 1.5rem;
     max-width: 1440px;
 }
 
@@ -72,25 +72,25 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="metric-container"] {
     background: linear-gradient(135deg, #0d2137 0%, #0b1a2e 100%);
     border: 1px solid #1a3a5c;
-    border-radius: 10px;
-    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
 }
 
 [data-testid="metric-container"] label {
     color: #7ba7cc !important;
-    font-size: 0.78rem !important;
+    font-size: 0.68rem !important;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
 
 [data-testid="metric-container"] [data-testid="stMetricValue"] {
     color: #e8f4fd !important;
-    font-size: 1.55rem !important;
+    font-size: 1.15rem !important;
     font-weight: 600 !important;
 }
 
 [data-testid="stMetricDelta"] {
-    font-size: 0.8rem !important;
+    font-size: 0.72rem !important;
 }
 
 /* ── Headings ── */
