@@ -163,12 +163,31 @@ def render_channels_tab():
         st.markdown("### Channel Type")
         ch_type = st.radio(
             "Channel Configuration",
-            ["straight"],
-            format_func=lambda x: "Straight (Axial)",
+            ["straight", "helical"],
+            format_func=lambda x: "Straight (Axial)" if x == "straight" else "Helical (Spiral)",
             key="ch_type"
         )
 
-        helix_angle = 0.0
+        helix_angle_chamber = 10.0
+        helix_angle_throat = 20.0
+        helix_angle_exit = 15.0
+        helix_direction = 1
+
+        if ch_type == "helical":
+            st.markdown("### Helix Parameters")
+            helix_angle_chamber = st.slider(
+                "Chamber Helix Angle [deg]", 0.0, 30.0, 10.0, key="helix_chamber"
+            )
+            helix_angle_throat = st.slider(
+                "Throat Helix Angle [deg]", 0.0, 45.0, 20.0, key="helix_throat"
+            )
+            helix_angle_exit = st.slider(
+                "Exit Helix Angle [deg]", 0.0, 30.0, 15.0, key="helix_exit"
+            )
+            helix_dir_label = st.radio(
+                "Helix Direction", ["Right-hand", "Left-hand"], key="helix_dir"
+            )
+            helix_direction = 1 if helix_dir_label == "Right-hand" else -1
 
         st.markdown("### Number of Channels")
         n_channels = st.number_input(
@@ -192,7 +211,10 @@ def render_channels_tab():
                     rib_width_throat=ch_rib / 1000,
                     n_channels=n_channels,
                     channel_type=ch_type,
-                    helix_angle_throat=helix_angle if ch_type == "helical" else 0.0
+                    helix_angle_chamber=helix_angle_chamber,
+                    helix_angle_throat=helix_angle_throat,
+                    helix_angle_exit=helix_angle_exit,
+                    helix_direction=helix_direction,
                 )
 
                 nozzle_params = st.session_state.nozzle_params
@@ -217,6 +239,7 @@ def _render_channel_views():
     import plotly.graph_objects as go
     from resa.addons.contour import (
         compute_channel_geometry_at_x,
+        compute_helix_path,
         generate_2d_contour,
     )
 
@@ -387,7 +410,12 @@ def _render_channel_views():
             ]
 
             for ci in range(0, n_ch, step):
-                theta_c_arr = np.full(len(x_p), ci * 2 * np.pi / n_ch)
+                if ch_params.channel_type == 'helical':
+                    _, _, _, theta_c_arr = compute_helix_path(
+                        x_p, r_p, ci, n_ch, nozzle_params, ch_params, geom
+                    )
+                else:
+                    theta_c_arr = np.full(len(x_p), ci * 2 * np.pi / n_ch)
 
                 # Build bottom and top surfaces for this channel
                 n_w = 6  # angular resolution within channel width
