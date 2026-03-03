@@ -4,6 +4,7 @@ Unified Streamlit UI Application
 
 Run with: streamlit run resa/ui/app.py
 """
+import json
 import sys
 from pathlib import Path
 
@@ -11,6 +12,31 @@ from pathlib import Path
 _project_root = Path(__file__).parent.parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
+
+_SETTINGS_FILE = Path.home() / ".resa_settings.json"
+
+
+def _load_settings_from_disk():
+    """Load persisted settings into session state (once per session)."""
+    if st.session_state.get("_settings_loaded"):
+        return
+    if _SETTINGS_FILE.exists():
+        try:
+            data = json.loads(_SETTINGS_FILE.read_text())
+            for k, v in data.items():
+                if k not in st.session_state or st.session_state[k] in (None, ""):
+                    st.session_state[k] = v
+        except Exception:
+            pass
+    st.session_state["_settings_loaded"] = True
+
+
+def _save_settings_to_disk(data: dict):
+    """Persist settings dict to ~/.resa_settings.json."""
+    try:
+        _SETTINGS_FILE.write_text(json.dumps(data, indent=2))
+    except Exception:
+        pass
 
 import streamlit as st
 
@@ -340,10 +366,20 @@ def init_session_state():
         "project_name": None,
         "analysis_history": [],
         "theme": "dark",
+        # Project management
+        "current_project": None,
+        "project_dir": None,
+        # User settings (may be overridden by disk settings below)
+        "output_dir": "./output",
+        "unit_system": "SI",
+        "author_name": "",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+    # Load persisted user settings from disk (only runs once per session)
+    _load_settings_from_disk()
 
 
 def _nav_group_header(label: str):
@@ -557,12 +593,38 @@ def render_settings_page():
     st.markdown("<h1>Settings</h1>", unsafe_allow_html=True)
 
     st.subheader("Output Directory")
-    st.text_input("Output directory", value="./output")
+    output_dir = st.text_input(
+        "Output directory",
+        value=st.session_state.get("output_dir", "./output"),
+        key="settings_output_dir",
+    )
 
     st.subheader("Units")
-    st.selectbox("Unit system", ["SI", "Imperial", "Mixed"])
+    _unit_options = ["SI", "Imperial", "Mixed"]
+    _unit_idx = _unit_options.index(st.session_state.get("unit_system", "SI"))
+    unit_system = st.selectbox(
+        "Unit system",
+        _unit_options,
+        index=_unit_idx,
+        key="settings_unit_system",
+    )
+
+    st.subheader("User")
+    author_name = st.text_input(
+        "Author / Designer name",
+        value=st.session_state.get("author_name", ""),
+        key="settings_author_name",
+    )
 
     if st.button("Save Settings", type="primary"):
+        st.session_state.output_dir = output_dir
+        st.session_state.unit_system = unit_system
+        st.session_state.author_name = author_name
+        _save_settings_to_disk({
+            "output_dir": output_dir,
+            "unit_system": unit_system,
+            "author_name": author_name,
+        })
         st.success("Settings saved!")
 
 

@@ -113,6 +113,39 @@ def render_versions_tab():
         from resa.projects.version_control import ProjectVersionControl
 
         vc = ProjectVersionControl(st.session_state.project_dir)
+
+        # ── Save current design as a new version ─────────────────────────────
+        if st.session_state.get('design_result') and st.session_state.get('engine_config'):
+            st.markdown("### Save Current Design")
+            with st.form("save_version_form"):
+                desc = st.text_input(
+                    "Version description",
+                    placeholder="e.g. Increased thrust to 2500 N",
+                )
+                author = st.text_input(
+                    "Author",
+                    value=st.session_state.get('author_name', ''),
+                )
+                submitted = st.form_submit_button("Save Version", type="primary")
+
+            if submitted:
+                if not desc:
+                    st.error("Please enter a version description.")
+                else:
+                    try:
+                        version = vc.save_version(
+                            config=st.session_state.engine_config,
+                            result=st.session_state.design_result,
+                            description=desc,
+                            author=author or "Unknown",
+                        )
+                        st.success(f"Version saved: `{version.version_id[:8]}...`")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to save version: {e}")
+
+            st.divider()
+
         versions = vc.list_versions()
 
         if not versions:
@@ -341,12 +374,45 @@ def render_settings_tab_internal():
 
     with col1:
         if st.button("Export All Data"):
-            st.info("Would export all project data to JSON/ZIP")
+            if not st.session_state.get('project_dir'):
+                st.warning("Open a project first.")
+            else:
+                import io
+                import zipfile
+                from pathlib import Path
+                proj_path = Path(st.session_state.project_dir)
+                buf = io.BytesIO()
+                with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for f in proj_path.rglob('*.json'):
+                        zf.write(f, f.relative_to(proj_path))
+                buf.seek(0)
+                archive_name = f"{st.session_state.get('current_project', 'project')}.zip"
+                st.download_button(
+                    "Download project archive",
+                    data=buf,
+                    file_name=archive_name,
+                    mime="application/zip",
+                )
 
     with col2:
         uploaded = st.file_uploader("Import Project", type=['zip', 'json'])
         if uploaded:
-            st.info(f"Would import: {uploaded.name}")
+            if uploaded.name.endswith('.zip'):
+                import io
+                import zipfile
+                from pathlib import Path
+                target_dir = Path(st.session_state.get('output_dir', './projects'))
+                try:
+                    with zipfile.ZipFile(io.BytesIO(uploaded.read())) as zf:
+                        proj_name = uploaded.name.replace('.zip', '')
+                        extract_path = target_dir / proj_name
+                        extract_path.mkdir(parents=True, exist_ok=True)
+                        zf.extractall(extract_path)
+                    st.success(f"Project imported to: {extract_path}")
+                except Exception as e:
+                    st.error(f"Import failed: {e}")
+            else:
+                st.error("Only ZIP archives are supported for import.")
 
 
 def get_projects_list():
@@ -368,11 +434,15 @@ def get_projects_list():
                     with open(meta_file) as f:
                         meta = json.load(f)
 
-                    # Count versions
+                    # Count versions (exclude the index file)
                     versions_dir = proj_dir / "versions"
                     n_versions = 0
                     if versions_dir.exists():
-                        n_versions = len(list(versions_dir.glob("*.json"))) - 1  # Exclude index
+                        version_files = [
+                            f for f in versions_dir.glob("*.json")
+                            if f.name != "versions_index.json"
+                        ]
+                        n_versions = len(version_files)
 
                     projects.append({
                         "name": meta.get("name", proj_dir.name),
