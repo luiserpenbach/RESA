@@ -35,7 +35,7 @@ export function ResultsTab({ result, isLoading, error }: ResultsTabProps) {
       <H5 style={{ color: "#7ba7cc", marginBottom: 12 }}>Performance Metrics</H5>
       <MetricGrid result={result} />
 
-      {result?.cooling && (
+      {result?.max_wall_temp != null && (
         <>
           <H5 style={{ color: "#7ba7cc", margin: "20px 0 12px" }}>
             Thermal Analysis
