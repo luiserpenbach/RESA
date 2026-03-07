@@ -1,4 +1,20 @@
 import { useState } from "react";
+
+/** Extract a human-readable message from an Axios 422 or generic error. */
+function extractErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const resp = (err as { response?: { data?: { detail?: unknown } } }).response;
+    const detail = resp?.data?.detail;
+    if (typeof detail === "string") return detail;
+    if (detail && typeof detail === "object") {
+      if ("errors" in detail && Array.isArray((detail as { errors: string[] }).errors)) {
+        return (detail as { errors: string[] }).errors.join(" · ");
+      }
+    }
+  }
+  if (err instanceof Error) return err.message;
+  return "Design failed. Check configuration.";
+}
 import { TopBar } from "../../components/layout/TopBar";
 import { StatusBar } from "../../components/layout/StatusBar";
 import { WorkspacePanel } from "../../components/workspace/WorkspacePanel";
@@ -31,9 +47,7 @@ export default function EnginePage() {
       // Switch to dashboard if we have plots
       if (result.figure_dashboard) setWorkspaceTab("dashboard");
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Design failed. Check configuration.";
-      setErrorMsg(msg);
+      setErrorMsg(extractErrorMessage(err));
     }
   }
 
