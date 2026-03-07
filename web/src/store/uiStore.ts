@@ -1,14 +1,39 @@
 import { create } from "zustand";
 
+export type WorkspaceTab = "schematic" | "dashboard" | "contour" | "3d";
+
 interface UiStore {
   sidebarCollapsed: boolean;
+  rightPanelCollapsed: boolean;
+  cmdPaletteOpen: boolean;
+  workspaceTab: WorkspaceTab;
+  lastRunTime: number | null;
+  lastRunDuration: number | null;
+
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
+  toggleRightPanel: () => void;
+  toggleCmdPalette: () => void;
+  setCmdPaletteOpen: (v: boolean) => void;
+  setWorkspaceTab: (tab: WorkspaceTab) => void;
+  setLastRunTime: (t: number | null) => void;
+  setLastRunDuration: (ms: number | null) => void;
 }
 
 export const useUiStore = create<UiStore>((set) => ({
   sidebarCollapsed: false,
-  toggleSidebar: () =>
-    set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  rightPanelCollapsed: false,
+  cmdPaletteOpen: false,
+  workspaceTab: "schematic",
+  lastRunTime: null,
+  lastRunDuration: null,
+
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
+  toggleRightPanel: () => set((s) => ({ rightPanelCollapsed: !s.rightPanelCollapsed })),
+  toggleCmdPalette: () => set((s) => ({ cmdPaletteOpen: !s.cmdPaletteOpen })),
+  setCmdPaletteOpen: (v) => set({ cmdPaletteOpen: v }),
+  setWorkspaceTab: (tab) => set({ workspaceTab: tab }),
+  setLastRunTime: (t) => set({ lastRunTime: t }),
+  setLastRunDuration: (ms) => set({ lastRunDuration: ms }),
 }));

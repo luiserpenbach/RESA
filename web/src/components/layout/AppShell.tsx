@@ -1,31 +1,29 @@
 import { Outlet } from "react-router-dom";
-import { NavigationSidebar } from "./NavigationSidebar";
 import { useUiStore } from "../../store/uiStore";
 
+/**
+ * 3-panel grid shell: TopBar | LeftPanel | Workspace | RightPanel | StatusBar
+ * The actual panel content is injected by the page (EnginePage) via context/props.
+ * For the workspace routes, EnginePage renders all three panels directly inside the grid.
+ */
 export function AppShell() {
-  const { sidebarCollapsed } = useUiStore();
+  const { sidebarCollapsed, rightPanelCollapsed } = useUiStore();
+
+  const gridCols = [
+    sidebarCollapsed ? "0px" : "var(--panel-left)",
+    "1fr",
+    rightPanelCollapsed ? "0px" : "var(--panel-right)",
+  ].join(" ");
 
   return (
     <div
+      className="app-shell"
       style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        background: "#0d1117",
+        gridTemplateColumns: gridCols,
+        transition: "grid-template-columns 180ms ease",
       }}
     >
-      {!sidebarCollapsed && <NavigationSidebar />}
-
-      <main
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: 24,
-          background: "#0d1117",
-        }}
-      >
-        <Outlet />
-      </main>
+      <Outlet />
     </div>
   );
 }

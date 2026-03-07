@@ -53,11 +53,14 @@ const COOLANTS = [
 interface EngineConfigFormProps {
   onRunDesign?: () => void;
   isRunning?: boolean;
+  /** Compact mode for use inside a panel (no max-width, tighter spacing). */
+  compact?: boolean;
 }
 
 export function EngineConfigForm({
   onRunDesign,
   isRunning = false,
+  compact = false,
 }: EngineConfigFormProps) {
   const { activeConfig, setConfig } = useEngineStore();
   const [localConfig, setLocalConfig] =
@@ -85,7 +88,7 @@ export function EngineConfigForm({
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: compact ? undefined : 900 }}>
       {/* ── IDENTIFICATION ──────────────────────────────────── */}
       <H5 style={{ color: "#7ba7cc", marginBottom: 12 }}>Identification</H5>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
