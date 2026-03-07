@@ -40,6 +40,7 @@ env/
 outputs/
 output/
 *.html
+!web/index.html
 *.dxf
 *.step
 *.iges
