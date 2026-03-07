@@ -2,33 +2,36 @@
 
 /* ─── Design Tokens ──────────────────────────────────────────────────── */
 :root {
-  --bg-base:     #060b12;
-  --bg-panel:    #090f1e;
-  --bg-card:     #0c1628;
-  --bg-elevated: #0f1d34;
-  --bg-hover:    #122340;
-  --bg-active:   #162a4e;
+  /* Neutral dark-gray backgrounds — no blue tinting */
+  --bg-base:     #111111;
+  --bg-panel:    #171717;
+  --bg-card:     #1c1c1c;
+  --bg-elevated: #212121;
+  --bg-hover:    #272727;
+  --bg-active:   #2c2c2c;
 
-  --border-subtle:  #0e1e36;
-  --border-default: #172e54;
-  --border-active:  #1e4d92;
-  --border-focus:   #2878d8;
+  /* Borders */
+  --border-subtle:  #222222;
+  --border-default: #2e2e2e;
+  --border-active:  #424242;
+  --border-focus:   #4a7cf4;
 
-  --accent:        #1a6ad4;
-  --accent-bright: #3d9bff;
-  --accent-dim:    rgba(26, 106, 212, 0.18);
-  --accent-glow:   rgba(61, 155, 255, 0.12);
+  /* Accent: one muted blue used sparingly */
+  --accent:        #2b57d6;
+  --accent-bright: #4a7cf4;
+  --accent-dim:    rgba(43, 87, 214, 0.15);
+  --accent-glow:   rgba(74, 124, 244, 0.08);
 
-  --cyan:     #00c8f0;
-  --cyan-dim: rgba(0, 200, 240, 0.10);
-  --green:    #00d688;
-  --amber:    #f5a623;
-  --red:      #e84040;
+  /* Status colors — desaturated */
+  --green:    #4a9e59;
+  --amber:    #c88b2a;
+  --red:      #c94040;
 
-  --text-primary:   #cce4ff;
-  --text-secondary: #4e8ab8;
-  --text-muted:     #243d5c;
-  --text-data:      #8dcfff;
+  /* Typography */
+  --text-primary:   #e2e2e2;
+  --text-secondary: #7a7a7a;
+  --text-muted:     #3d3d3d;
+  --text-data:      #9bb5f8;   /* soft periwinkle for numeric values */
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -239,7 +242,8 @@ body {
   grid-row: 3;
   display: flex;
   align-items: stretch;
-  background: var(--accent);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-subtle);
   z-index: 20;
   overflow: hidden;
 }
@@ -295,7 +299,6 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--accent-bright);
-  box-shadow: 0 0 8px var(--accent-bright);
 }
 
 .topbar-breadcrumb {
@@ -425,22 +428,16 @@ body {
 }
 
 .run-btn:hover:not(:disabled) {
-  background: #2272e0;
-  box-shadow: 0 0 20px rgba(61, 155, 255, 0.2);
+  background: #3a6de8;
 }
 
 .run-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .run-btn.is-running {
-  animation: run-glow 1.6s ease-in-out infinite;
-}
-
-@keyframes run-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(61, 155, 255, 0.2); }
-  50%       { box-shadow: 0 0 24px rgba(61, 155, 255, 0.45); }
+  opacity: 0.75;
 }
 
 .icon-btn {
@@ -474,8 +471,8 @@ body {
   height: 100%;
   font-size: 11px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.82);
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border-subtle);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -485,7 +482,7 @@ body {
 }
 
 .statusbar-item.clickable:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
 }
 
 .statusbar-item.mono {

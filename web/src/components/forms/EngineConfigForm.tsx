@@ -73,7 +73,11 @@ export function EngineConfigForm({
     key: K,
     value: EngineConfigRequest[K]
   ) {
-    setLocalConfig((prev) => ({ ...prev, [key]: value }));
+    setLocalConfig((prev) => {
+      const next = { ...prev, [key]: value };
+      setConfig(next); // keep global store in sync so TopBar RUN DESIGN works
+      return next;
+    });
   }
 
   async function handleValidate() {

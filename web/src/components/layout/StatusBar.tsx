@@ -45,7 +45,7 @@ export function StatusBar({ isRunning, error }: StatusBarProps) {
       )}
 
       {r && warnings > 0 && (
-        <div className="statusbar-item" style={{ color: "rgba(245,166,35,0.9)" }}>
+        <div className="statusbar-item" style={{ color: "var(--amber)" }}>
           <Icon icon="warning-sign" size={10} />
           <span>{warnings} warning{warnings !== 1 ? "s" : ""}</span>
         </div>
@@ -69,7 +69,7 @@ export function StatusBar({ isRunning, error }: StatusBarProps) {
       )}
 
       {error && (
-        <div className="statusbar-item" style={{ color: "rgba(232,64,64,0.9)" }}>
+        <div className="statusbar-item" style={{ color: "var(--red)" }}>
           {error.length > 80 ? error.slice(0, 80) + "…" : error}
         </div>
       )}
