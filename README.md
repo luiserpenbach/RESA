@@ -1,214 +1,117 @@
 # RESA - Rocket Engine Sizing & Analysis
 
-A comprehensive Python toolkit for liquid rocket engine preliminary design and analysis.
+A comprehensive Python toolkit (v2.0.0) for liquid rocket engine preliminary design and analysis. Targets aerospace engineers working on small-to-medium liquid bipropellant engines.
+
+**License:** MIT | **Python:** 3.9 – 3.12 | **Status:** Beta
+
+---
 
 ## Features
 
-- 🔥 **Combustion Analysis** - CEA-based equilibrium chemistry
-- ❄️ **Regenerative Cooling** - 1D marching solver with real fluid properties
-- 💉 **Injector Design** - Swirl injector sizing with Cd estimation
-- 📈 **Throttle Analysis** - Operating envelope mapping
-- 🔬 **Two-Phase Flow** - N2O orifice models (SPI, HEM, Dyer)
-- 📊 **Interactive UI** - Streamlit-based design interface
+- **Combustion Analysis** — CEA-based equilibrium chemistry via RocketCEA
+- **Regenerative Cooling** — 1D marching solver with real fluid properties (CoolProp)
+- **Injector Design** — LCSC/GCSC swirl injector sizing with Cd estimation
+- **Torch Igniter** — HEM two-phase flow igniter sizing
+- **Throttle Analysis** — Operating envelope mapping and optimization
+- **Two-Phase Flow** — N2O orifice models (SPI, HEM, Dyer)
+- **3D Visualization** — WebGL nozzle viewer and STL/DXF export
+- **Monte Carlo UQ** — Latin Hypercube Sampling uncertainty quantification
+- **Multi-point Optimization** — Scipy-based design optimization
+- **Tank Simulation** — Pressurization and depletion modeling
+- **REST API** — FastAPI backend with React frontend
+- **Streamlit UI** — Interactive design interface
+- **Project Management** — Git-integrated design version control
+- **HTML Reports** — Professional embedded-Plotly reports
+
+---
 
 ## Installation
 
 ```bash
-pip install numpy pandas scipy matplotlib CoolProp rocketcea streamlit PyYAML ezdxf plotly
+# Clone the repository
+git clone <repo-url>
+cd RESA
+
+# Development install (recommended)
+pip install -e ".[dev]"
 ```
+
+**Core dependencies:** numpy, scipy, plotly, streamlit, pyyaml, CoolProp, pandas, numpy-stl, fastapi, uvicorn, pydantic
+
+---
 
 ## Quick Start
 
-### Using the Streamlit UI
+### Streamlit UI
 
 ```bash
-cd rocket_engine/ui
-streamlit run app.py
+streamlit run resa/ui/app.py
+# Or via the installed entry point:
+resa
 ```
 
-### Programmatic Usage
+### FastAPI + React (Full-Stack)
+
+```bash
+# Install web dependencies
+cd web && npm install && npm run build && cd ..
+
+# Start the API server (serves React frontend at http://localhost:8000)
+uvicorn api.main:app --reload --port 8000
+```
+
+Using the Makefile:
+
+```bash
+make install-api      # pip install -e ".[dev]"
+make install-web      # cd web && npm install
+make dev              # run API + web dev servers in parallel
+make build            # build React frontend
+```
+
+### Programmatic API
 
 ```python
-from rocket_engine.core import EngineConfig, AnalysisPreset
+from resa import Engine, EngineConfig
 
-# Create a configuration
 config = EngineConfig(
-    engine_name="Hopper E2",
+    engine_name="Phoenix-1",
     fuel="Ethanol90",
     oxidizer="N2O",
     thrust_n=2200,
     pc_bar=25,
     mr=4.0,
-    coolant_p_in_bar=97,
-    coolant_t_in_k=298
 )
 
-# Validate configuration
-validation = config.validate()
-if validation.is_valid:
-    print("Configuration valid!")
-else:
-    print(f"Errors: {validation.errors}")
-
-# Or use a preset
-preset = AnalysisPreset.hopper_2kn()
-config = preset.config
+engine = Engine(config)
+result = engine.design()
+result.to_html("phoenix1_report.html")
 ```
 
-## Architecture
-
-```
-rocket_engine/
-├── core/                    # Core abstractions
-│   ├── interfaces.py        # Abstract base classes / Protocols
-│   ├── results.py           # All result dataclasses
-│   ├── config.py            # Configuration classes
-│   └── exceptions.py        # Custom exceptions
-│
-├── physics/                 # Pure physics calculations
-│   ├── combustion.py        # CEA wrapper
-│   ├── heat_transfer.py     # Bartz equation, etc.
-│   ├── fluid_flow.py        # Mach relations, area-mach
-│   ├── fluid_dynamics.py    # Friction factors
-│   └── cooling.py           # Regen cooling solver
-│
-├── geometry/                # Geometry generation
-│   ├── nozzle.py            # Rao bell nozzle generator
-│   ├── cooling.py           # Channel geometry
-│   └── injector.py          # Injector geometry
-│
-├── solvers/                 # Integrated solvers
-│   ├── engine_solver.py     # Main engine analysis
-│   └── transient_solver.py  # Startup simulation
-│
-├── components/              # Component models
-│   ├── feed_system.py       # Lines, valves
-│   └── swirl_injector/      # Injector sizing
-│
-├── analysis/                # Post-processing
-│   ├── fluid_state.py       # Phase diagrams
-│   └── performance.py       # C*, Isp maps
-│
-├── io/                      # Import/export
-│   └── export.py            # DXF, CSV export
-│
-└── ui/                      # Streamlit application
-    ├── app.py               # Main entry point
-    └── pages/               # Individual pages
-        ├── design_page.py
-        ├── analysis_page.py
-        ├── thermal_page.py
-        ├── injector_page.py
-        ├── throttle_page.py
-        ├── fluids_page.py
-        └── projects_page.py
-```
-
-## Key Design Principles
-
-### 1. Separation of Concerns
-
-- **Physics modules** contain pure calculations with no side effects
-- **Solvers** orchestrate physics modules and manage state
-- **Results** are immutable dataclasses
-- **UI** is completely separate from business logic
-
-### 2. Dependency Injection
-
-```python
-# Solvers accept their dependencies, enabling testing with mocks
-class EngineSolver:
-    def __init__(self, config, cea_solver=None, cooling_solver=None):
-        self.cea = cea_solver or CEASolver(config.fuel, config.oxidizer)
-        self.cooling = cooling_solver or RegenCoolingSolver(...)
-```
-
-### 3. Configuration Validation
+### Configuration Validation
 
 ```python
 config = EngineConfig(...)
-result = config.validate()
+validation = config.validate()
 
-if not result.is_valid:
-    for error in result.errors:
+if not validation.is_valid:
+    for error in validation.errors:
         print(f"ERROR: {error}")
-    
-for warning in result.warnings:
+
+for warning in validation.warnings:
     print(f"WARNING: {warning}")
 ```
 
-### 4. Custom Exceptions
+### YAML Configuration
 
 ```python
-from rocket_engine.core.exceptions import (
-    ConvergenceError,
-    ThermodynamicError,
-    CoolingError
-)
-
-try:
-    solver.solve()
-except ConvergenceError as e:
-    print(f"Solver failed after {e.iterations} iterations")
-except ThermodynamicError as e:
-    print(f"CoolProp failed at P={e.pressure}, T={e.temperature}")
+config = EngineConfig.from_yaml("engine.yaml")
 ```
-
-## Module Extension Guide
-
-### Adding a New Analysis Module
-
-1. Create a new page in `ui/pages/`:
-
-```python
-# ui/pages/my_analysis_page.py
-def render_my_analysis_page():
-    st.title("My New Analysis")
-    # ... implementation
-```
-
-2. Register in `ui/pages/__init__.py`:
-
-```python
-from .my_analysis_page import render_my_analysis_page
-```
-
-3. Add navigation in `ui/app.py`:
-
-```python
-pages = {
-    # ... existing pages
-    '🔮 My Analysis': 'my_analysis',
-}
-
-# In the routing section:
-elif page == 'my_analysis':
-    from rocket_engine.ui.pages.my_analysis_page import render_my_analysis_page
-    render_my_analysis_page()
-```
-
-### Adding Turbomachinery Analysis
-
-The modular architecture supports extension. Example structure:
-
-```
-rocket_engine/
-├── turbomachinery/
-│   ├── __init__.py
-│   ├── pump.py              # Pump performance models
-│   ├── turbine.py           # Turbine analysis
-│   ├── cycle_analysis.py    # Cycle thermodynamics
-│   └── results.py           # TurbomachineryResult dataclass
-│
-└── ui/pages/
-    └── turbomachinery_page.py
-```
-
-## Configuration File Format (YAML)
 
 ```yaml
+# engine.yaml
 meta:
-  engine_name: "Hopper E2-1A"
+  engine_name: "Phoenix-1"
   version: "1.0"
   designer: "Your Name"
 
@@ -239,43 +142,183 @@ cooling:
     wall_thickness_mm: 0.5
 ```
 
-## Recommendations for Future Development
+---
 
-### Short Term
+## Architecture
 
-1. **Unit Testing** - Add pytest tests for physics modules
-2. **Type Hints** - Complete type annotations throughout
-3. **Documentation** - Add docstrings and Sphinx docs
-4. **Error Messages** - More descriptive error messages with suggestions
+```
+RESA/
+├── resa/                          # Main package (v2.0)
+│   ├── core/                      # Config, results, interfaces, exceptions
+│   ├── physics/                   # Pure physics calculations (no side effects)
+│   ├── solvers/                   # Integrated analysis solvers
+│   ├── geometry/                  # Nozzle and channel geometry generators
+│   ├── addons/                    # Specialized design modules
+│   │   ├── igniter/               # Torch igniter sizing
+│   │   ├── injector/              # Swirl injector design (LCSC/GCSC)
+│   │   ├── contour/               # 3D nozzle contour + STL/DXF export
+│   │   └── tank/                  # Tank pressurization simulation
+│   ├── analysis/                  # Monte Carlo, optimization
+│   ├── visualization/             # Plotly interactive plots
+│   ├── reporting/                 # HTML report generation
+│   ├── ui/                        # Streamlit application (13+ pages)
+│   └── projects/                  # Git-based project/version management
+│
+├── api/                           # FastAPI REST API
+│   ├── main.py                    # App entry point (serves React build)
+│   ├── routers/                   # engine.py, config_io.py
+│   ├── models/                    # Pydantic models
+│   └── services/                  # Serialization utilities
+│
+├── web/                           # React frontend (served by FastAPI)
+├── examples/                      # Example scripts
+├── docs/                          # Documentation
+├── Makefile                       # Build automation
+│
+└── (legacy — being migrated into resa/)
+    ├── rocket_engine/
+    ├── swirl_injector/
+    ├── torch_igniter_advanced/
+    ├── advanced_contour_design/
+    └── fluid_lib/
+```
 
-### Medium Term
+### Data Flow
 
-1. **Pint Integration** - Use `pint` for unit tracking
-2. **Async Support** - Async computation for UI responsiveness
-3. **Caching** - Cache CEA results and CoolProp lookups
-4. **Database** - SQLite for project persistence
+```
+EngineConfig (dataclass / YAML)
+    → Engine.design()
+        → CEASolver           (combustion)
+        → NozzleGenerator     (geometry)
+        → CoolingChannelGenerator (channels)
+        → CoolingSolver       (thermal analysis)
+    → EngineDesignResult (frozen dataclass)
+        → HTMLReportGenerator (report)
+        → EngineDashboardPlotter (visualization)
+```
 
-### Long Term
+### Key Design Principles
 
-1. **Optimization** - Scipy.optimize for design optimization
-2. **ML Integration** - Surrogate models for rapid iteration
-3. **3D CAD Export** - STEP/IGES export for CAD integration
-4. **Validation Database** - Compare against test data
+1. **Separation of Concerns** — Physics modules are pure functions. Solvers orchestrate them. UI is fully decoupled.
+2. **Dependency Injection** — Solvers accept optional deps in `__init__` for easy mock-based testing.
+3. **Immutable Results** — All result dataclasses use `@dataclass(frozen=True)`.
+4. **Interface Contracts** — ABCs in `core/interfaces.py` define `Solver`, `CombustionSolver`, `CoolingSolver`, `FluidProvider`, `GeometryGenerator`, etc.
+5. **Custom Exceptions** — All exceptions inherit from `RESAError` with contextual metadata (iterations, residuals, temperatures, pressures).
 
-## License
+---
 
-MIT License - See LICENSE file for details.
+## Public API
 
-## Contributing
+```python
+from resa import (
+    # Core
+    Engine, EngineConfig, EngineDesignResult, CombustionResult,
+    # Interfaces
+    Solver, FluidProvider, GeometryGenerator,
+    # Exceptions
+    RESAError, ConfigurationError, PhysicsError,
+    # Visualization
+    PlotTheme, EngineeringTheme, DarkTheme,
+    EngineDashboardPlotter, CrossSectionPlotter,
+    NozzleContourPlotter, GasDynamicsPlotter,
+    Engine3DViewer,
+    # Reporting
+    HTMLReportGenerator,
+    # Analysis
+    MonteCarloAnalysis, ThrottleOptimizer,
+)
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+### Custom Exception Handling
+
+```python
+from resa.core.exceptions import ConvergenceError, ThermodynamicError, MaterialLimitError
+
+try:
+    result = engine.design()
+except ConvergenceError as e:
+    print(f"Solver failed after {e.iterations} iterations (residual={e.residual:.2e})")
+except ThermodynamicError as e:
+    print(f"CoolProp failed: fluid={e.fluid}, P={e.pressure} Pa, T={e.temperature} K")
+except MaterialLimitError as e:
+    print(f"Wall too hot: {e.actual_value:.0f} K > limit {e.limit_value:.0f} K")
+```
+
+---
+
+## Development
+
+### Running Tests
+
+```bash
+pytest                                  # all tests
+pytest torch_igniter_advanced/          # igniter-specific tests
+pytest --cov=resa                       # with coverage
+```
+
+### Code Quality
+
+```bash
+black --check .     # formatting (line-length 100)
+ruff check .        # linting
+```
+
+### Adding a New UI Page
+
+1. Create `resa/ui/pages/my_page.py` with a `render_my_page()` function
+2. Register in `resa/ui/pages/__init__.py`
+3. Add navigation entry in `resa/ui/app.py`
+
+### Adding a New Addon Module
+
+New specialized design modules go in `resa/addons/<module_name>/` and should implement the `AnalysisModule` interface from `core/interfaces.py`.
+
+### Dependency Direction
+
+```
+core  →  (nothing)
+physics  →  core
+solvers  →  core, physics
+geometry  →  core, physics
+addons  →  core, physics, solvers, geometry
+analysis  →  core, physics, solvers
+visualization / reporting / ui  →  everything above
+api  →  resa package
+```
+
+---
+
+## REST API Endpoints
+
+Base URL: `http://localhost:8000/api/v1`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| POST | `/engine/design` | Run full engine design |
+| GET/POST | `/config/...` | Config I/O |
+
+Full interactive docs: `http://localhost:8000/docs` (Swagger UI)
+
+---
 
 ## References
 
 - NASA CEA: https://cearun.grc.nasa.gov/
 - CoolProp: http://www.coolprop.org/
-- Humble, Henry, & Larson: "Space Propulsion Analysis and Design"
-- Sutton & Biblarz: "Rocket Propulsion Elements"
+- Humble, Henry & Larson: *Space Propulsion Analysis and Design*
+- Sutton & Biblarz: *Rocket Propulsion Elements*
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Add tests for new functionality
+4. Format with Black and lint with Ruff
+5. Submit a pull request
+
+## License
+
+MIT License — see LICENSE file for details.

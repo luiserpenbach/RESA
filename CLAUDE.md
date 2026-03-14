@@ -52,14 +52,23 @@ RESA/
 │   ├── ui/                        # Streamlit application
 │   │   ├── app.py                 # Main Streamlit entry point
 │   │   └── pages/                 # UI pages (design, analysis, injector, igniter, etc.)
+│   ├── config/                    # Configuration defaults and utilities
+│   │   └── engine_config.py       # Default values and config helpers
 │   └── projects/                  # Project and version management
 │       ├── project.py             # Project container
 │       ├── version_control.py     # Git-based design versioning
 │       └── output_manager.py      # Output file organization
+├── api/                           # FastAPI REST API
+│   ├── main.py                    # App entry point (serves React build at /)
+│   ├── routers/                   # engine.py, config_io.py
+│   ├── models/                    # Pydantic request/response models
+│   └── services/                  # Serialization utilities
+├── web/                           # React frontend (built output served by FastAPI)
 ├── examples/                      # Example scripts
 │   ├── new_architecture_demo.py   # v2.0 architecture showcase
 │   └── 2KN_Ethanox_example.py     # Simple 2kN engine design
 ├── docs/                          # Documentation
+├── Makefile                       # Build automation (dev-api, dev-web, build, test-api)
 ├── rocket_engine/                 # Legacy code (pre-v2.0, being replaced)
 ├── swirl_injector/                # Swirl injector standalone tool
 ├── torch_igniter_advanced/        # Torch igniter module + tests
@@ -89,6 +98,21 @@ streamlit run resa/ui/app.py
 
 # Or via entry point after install
 resa
+
+# FastAPI + React (full-stack)
+uvicorn api.main:app --reload --port 8000
+# Then open http://localhost:8000 (serves React build)
+# API docs at http://localhost:8000/docs
+```
+
+Using the Makefile:
+
+```bash
+make install-api   # pip install -e ".[dev]"
+make install-web   # cd web && npm install
+make dev           # run API + web dev servers in parallel
+make build         # build React frontend (web/dist/)
+make test-api      # run API tests
 ```
 
 ### Running Tests
@@ -163,6 +187,8 @@ Units convention in field names:
 - **Streamlit** - Web UI framework
 - **NumPy/SciPy** - Numerical computing
 - **numpy-stl** - STL geometry export
+- **FastAPI** + **Uvicorn** - REST API server
+- **Pydantic** - API request/response validation
 
 ## Code Conventions
 
@@ -232,7 +258,7 @@ Important public exports (from `resa/__init__.py`):
 - `Solver`, `FluidProvider`, `GeometryGenerator` (interfaces)
 - `RESAError`, `ConfigurationError`, `PhysicsError` (exceptions)
 - `PlotTheme`, `EngineeringTheme`, `DarkTheme` (visualization themes)
-- `EngineDashboardPlotter`, `CrossSectionPlotter`, `Engine3DViewer`
+- `EngineDashboardPlotter`, `CrossSectionPlotter`, `NozzleContourPlotter`, `GasDynamicsPlotter`, `Engine3DViewer`
 - `HTMLReportGenerator`
 - `MonteCarloAnalysis`, `ThrottleOptimizer`
 
@@ -244,7 +270,8 @@ Important public exports (from `resa/__init__.py`):
 4. **New addons** go in `resa/addons/<module_name>/` and should implement `AnalysisModule` for UI integration.
 5. **Visualization** code goes in `resa/visualization/` using Plotly and the `PlotTheme` system.
 6. **UI pages** go in `resa/ui/pages/` as Streamlit page modules.
-7. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`ui`/`reporting` depend on everything above but never the reverse.
-8. **Legacy directories** (`rocket_engine/`, `fluid_lib/`, `swirl_injector/`, `torch_igniter_advanced/`, `advanced_contour_design/`) contain older code being migrated into the `resa/` package. New development should go in `resa/`.
-9. **Test files** currently live in `torch_igniter_advanced/`. New tests should use `pytest` conventions.
-10. **Format code** with Black (line-length 100) and lint with Ruff before committing.
+7. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`ui`/`reporting` depend on everything above but never the reverse. `api/` depends on the `resa` package but is not part of it.
+8. **REST API** (`api/`) uses FastAPI and Pydantic v2. Routers live in `api/routers/`, models in `api/models/`. The server also serves the compiled React frontend from `web/dist/`.
+9. **Legacy directories** (`rocket_engine/`, `fluid_lib/`, `swirl_injector/`, `torch_igniter_advanced/`, `advanced_contour_design/`) contain older code being migrated into the `resa/` package. New development should go in `resa/`.
+10. **Test files** currently live in `torch_igniter_advanced/`. New tests should use `pytest` conventions and target `resa/` package code.
+11. **Format code** with Black (line-length 100) and lint with Ruff before committing.
