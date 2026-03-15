@@ -287,3 +287,73 @@ class ThrottleCurve:
     @property
     def throttle_ratio(self) -> float:
         return self.max_thrust / self.min_thrust if self.min_thrust > 0 else float('inf')
+
+
+# =============================================================================
+# WALL THICKNESS / STRUCTURAL RESULTS
+# =============================================================================
+
+@dataclass(frozen=True)
+class WallThicknessResult:
+    """Result from wall thickness / structural analysis."""
+    x: np.ndarray                       # Axial stations [m]
+    min_thickness_pressure: np.ndarray  # Min thickness for pressure [m]
+    min_thickness_thermal: np.ndarray   # Max thickness for thermal [m]
+    min_thickness_combined: np.ndarray  # Combined envelope [m]
+    actual_thickness: np.ndarray        # Actual wall thickness [m]
+    safety_factor: np.ndarray           # Von Mises safety factor
+    hoop_stress: np.ndarray             # Hoop stress [Pa]
+    thermal_stress: np.ndarray          # Thermal stress [Pa]
+    von_mises_stress: np.ndarray        # Von Mises equivalent stress [Pa]
+    material: Any = None                # MaterialProperties reference
+
+
+# =============================================================================
+# PERFORMANCE MAP RESULTS
+# =============================================================================
+
+@dataclass(frozen=True)
+class PerformanceMapResult:
+    """Result from off-design performance analysis."""
+    # Altitude performance
+    altitudes_m: Optional[np.ndarray] = None
+    thrust_vs_alt: Optional[np.ndarray] = None
+    isp_vs_alt: Optional[np.ndarray] = None
+    cf_vs_alt: Optional[np.ndarray] = None
+    # Throttle map
+    throttle_pcts: Optional[np.ndarray] = None
+    pc_vs_throttle: Optional[np.ndarray] = None
+    thrust_vs_throttle: Optional[np.ndarray] = None
+    isp_vs_throttle: Optional[np.ndarray] = None
+    # MR sweep
+    mr_values: Optional[np.ndarray] = None
+    isp_vs_mr: Optional[np.ndarray] = None
+    cstar_vs_mr: Optional[np.ndarray] = None
+
+
+# =============================================================================
+# FEED SYSTEM RESULTS
+# =============================================================================
+
+@dataclass(frozen=True)
+class FeedSystemResult:
+    """Result from feed system analysis."""
+    # Pressure budget
+    tank_pressure_bar: float = 0.0
+    pump_discharge_pressure_bar: float = 0.0
+    injector_dp_bar: float = 0.0
+    cooling_dp_bar: float = 0.0
+    line_losses_ox_bar: float = 0.0
+    line_losses_fuel_bar: float = 0.0
+    # Pump sizing
+    pump_power_ox_w: float = 0.0
+    pump_power_fuel_w: float = 0.0
+    pump_head_ox_m: float = 0.0
+    pump_head_fuel_m: float = 0.0
+    npsh_available_m: float = 0.0
+    npsh_margin_m: float = 0.0
+    # Cycle info
+    feed_type: str = "pressure-fed"
+    cycle_type: str = "none"
+    turbine_power_w: float = 0.0
+    power_balance_margin: float = 0.0

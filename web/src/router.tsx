@@ -3,8 +3,10 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
 import { Icon } from "@blueprintjs/core";
 
-const HomePage    = lazy(() => import("./pages/HomePage"));
-const EnginePage  = lazy(() => import("./pages/EnginePage"));
+const HomePage       = lazy(() => import("./pages/HomePage"));
+const EnginePage     = lazy(() => import("./pages/EnginePage"));
+const CoolingPage    = lazy(() => import("./pages/CoolingPage"));
+const StructuralPage = lazy(() => import("./pages/StructuralPage"));
 
 function Loading() {
   return (
@@ -63,10 +65,12 @@ const routes: RouteObject[] = [
     children: [
       { index: true,             element: withSuspense(<HomePage />) },
       { path: "engine",          element: withSuspense(<EnginePage />) },
-      { path: "cooling",         element: <ComingSoon name="Cooling Analysis" /> },
+      { path: "cooling",         element: withSuspense(<CoolingPage />) },
+      { path: "structural",      element: withSuspense(<StructuralPage />) },
       { path: "contour",         element: <ComingSoon name="Nozzle Contour" /> },
       { path: "throttle",        element: <ComingSoon name="Throttle Analysis" /> },
       { path: "analysis",        element: <ComingSoon name="Off-Design Analysis" /> },
+      { path: "feed-system",     element: <ComingSoon name="Feed System" /> },
       { path: "monte-carlo",     element: <ComingSoon name="Monte Carlo" /> },
       { path: "optimization",    element: <ComingSoon name="Optimization" /> },
       { path: "injector",        element: <ComingSoon name="Injector Design" /> },

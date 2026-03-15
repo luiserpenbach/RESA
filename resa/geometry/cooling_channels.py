@@ -1,8 +1,9 @@
 """Cooling Channel Geometry Generator for RESA."""
-import numpy as np
-from typing import Optional, Callable
+from typing import Callable, Optional
 
-from resa.core.results import NozzleGeometry, CoolingChannelGeometry
+import numpy as np
+
+from resa.core.results import CoolingChannelGeometry, NozzleGeometry
 
 
 class ChannelGeometryGenerator:
@@ -23,7 +24,10 @@ class ChannelGeometryGenerator:
         rib_width_throat: float,
         wall_thickness: float = 0.001,
         roughness: float = 10e-6,
-        helix_angle_deg: float = 0.0
+        helix_angle_deg: float = 0.0,
+        channel_type: str = "rectangular",
+        taper_angle_deg: float = 10.0,
+        num_channels_override: Optional[int] = None,
     ) -> CoolingChannelGeometry:
         """
         Generate cooling channel geometry.
@@ -36,6 +40,9 @@ class ChannelGeometryGenerator:
             wall_thickness: Hot wall thickness [m]
             roughness: Surface roughness [m]
             helix_angle_deg: Helix angle for spiral channels [degrees]
+            channel_type: 'rectangular' or 'trapezoidal'
+            taper_angle_deg: Sidewall taper angle for trapezoidal channels [deg]
+            num_channels_override: Override automatic channel count
 
         Returns:
             CoolingChannelGeometry with channel dimensions
@@ -53,13 +60,27 @@ class ChannelGeometryGenerator:
         pitch_normal = channel_width_throat + rib_width_throat
         pitch_hoop = pitch_normal / np.cos(alpha) if alpha != 0 else pitch_normal
         circ_throat = 2 * np.pi * r_throat
-        num_channels = int(np.round(circ_throat / pitch_hoop))
+
+        if num_channels_override is not None and num_channels_override > 0:
+            num_channels = num_channels_override
+        else:
+            num_channels = int(np.round(circ_throat / pitch_hoop))
 
         # Calculate channel width along contour (constant rib width)
         circumference_hoop = 2 * np.pi * r_channel_base
         pitch_hoop_local = circumference_hoop / num_channels
         pitch_normal_local = pitch_hoop_local * np.cos(alpha)
         channel_width = pitch_normal_local - rib_width_throat
+
+        # For trapezoidal channels, compute effective hydraulic width
+        # The bottom width is narrower than top width due to taper
+        if channel_type == "trapezoidal" and taper_angle_deg > 0:
+            taper_rad = np.radians(taper_angle_deg)
+            # Width at bottom of channel (narrower)
+            width_reduction = 2.0 * channel_height * np.tan(taper_rad)
+            channel_width_bottom = channel_width - width_reduction
+            # Use average width for hydraulic calculations
+            channel_width = (channel_width + np.maximum(channel_width_bottom, 1e-6)) / 2.0
 
         # Ensure positive channel width
         channel_width = np.maximum(channel_width, 1e-6)
