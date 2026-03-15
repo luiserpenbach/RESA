@@ -16,6 +16,7 @@ export type ModuleStatus = "locked" | "ready" | "completed" | "stale";
 export interface SessionCreateResponse {
   session_id: string;
   module_status: Record<string, string>;
+  engine_result: Record<string, unknown> | null;
 }
 
 export interface SessionStatusResponse {

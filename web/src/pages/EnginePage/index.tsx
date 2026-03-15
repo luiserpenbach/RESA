@@ -21,31 +21,41 @@ import { WorkspacePanel } from "../../components/workspace/WorkspacePanel";
 import { MetricsPanel } from "../../components/metrics/MetricsPanel";
 import { CommandPalette } from "../../components/ui/CommandPalette";
 import { EngineConfigForm } from "../../components/forms/EngineConfigForm";
-import { useDesignMutation, useValidateMutation, exportYaml } from "../../api/engine";
+import { useValidateMutation, exportYaml } from "../../api/engine";
+import { useCreateSessionMutation } from "../../api/session";
 import { useEngineStore } from "../../store/engineStore";
+import { useDesignSessionStore } from "../../store/designSessionStore";
 import { useUiStore } from "../../store/uiStore";
+import type { EngineDesignResponse } from "../../types/engine";
 
 export default function EnginePage() {
   const { activeConfig, lastDesignResult, setResult } = useEngineStore();
+  const { setSessionId, setModuleStatus } = useDesignSessionStore();
   const { setLastRunTime, setLastRunDuration, setWorkspaceTab } = useUiStore();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const designMutation = useDesignMutation();
+  const sessionMutation = useCreateSessionMutation();
   const validateMutation = useValidateMutation();
 
   async function handleRunDesign() {
     setErrorMsg(null);
     const t0 = Date.now();
     try {
-      const result = await designMutation.mutateAsync({
+      const session = await sessionMutation.mutateAsync({
         config: activeConfig,
         withCooling: false,
       });
-      setResult(result);
+      // Store session state for cross-module navigation
+      setSessionId(session.session_id);
+      setModuleStatus(session.module_status);
+      // Store engine result for display
+      if (session.engine_result) {
+        const result = session.engine_result as unknown as EngineDesignResponse;
+        setResult(result);
+        if (result.figure_dashboard) setWorkspaceTab("dashboard");
+      }
       setLastRunTime(Date.now());
       setLastRunDuration(Date.now() - t0);
-      // Switch to dashboard if we have plots
-      if (result.figure_dashboard) setWorkspaceTab("dashboard");
     } catch (err: unknown) {
       setErrorMsg(extractErrorMessage(err));
     }
@@ -69,7 +79,7 @@ export default function EnginePage() {
     } catch { /* silent */ }
   }
 
-  const isRunning = designMutation.isPending;
+  const isRunning = sessionMutation.isPending;
 
   return (
     <>

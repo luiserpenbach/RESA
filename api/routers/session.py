@@ -14,6 +14,7 @@ from api.models.session_models import (
     SessionCreateResponse,
     SessionStatusResponse,
 )
+from api.services.serialization import serialize_design_result
 from api.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,21 @@ async def create_session(
         logger.exception("Session creation failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    # Serialize the engine design result so the frontend has it immediately
+    engine_data = None
+    if session.engine_result is not None:
+        try:
+            engine_data = await loop.run_in_executor(
+                None,
+                partial(serialize_design_result, session.engine_result, config),
+            )
+        except Exception as exc:
+            logger.warning("Engine result serialization failed: %s", exc)
+
     return SessionCreateResponse(
         session_id=session_id,
         module_status=session.get_module_status(),
+        engine_result=engine_data,
     )
 
 
