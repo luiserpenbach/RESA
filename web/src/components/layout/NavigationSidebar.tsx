@@ -33,8 +33,7 @@ const NAV_GROUPS: NavGroup[] = [
     id: "performance",
     label: "Performance",
     items: [
-      { id: "throttle", label: "Throttle Analysis", path: "/throttle", icon: "dashboard" },
-      { id: "analysis", label: "Off-Design", path: "/analysis", icon: "function", moduleKey: "performance" },
+      { id: "performance", label: "Performance Maps", path: "/performance", icon: "dashboard", moduleKey: "performance" },
       { id: "feed-system", label: "Feed System", path: "/feed-system", icon: "flow-branch", moduleKey: "feed_system" },
     ],
   },

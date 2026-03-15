@@ -7,6 +7,9 @@ const HomePage       = lazy(() => import("./pages/HomePage"));
 const EnginePage     = lazy(() => import("./pages/EnginePage"));
 const CoolingPage    = lazy(() => import("./pages/CoolingPage"));
 const StructuralPage = lazy(() => import("./pages/StructuralPage"));
+const NozzleContourPage = lazy(() => import("./pages/NozzleContourPage"));
+const PerformancePage = lazy(() => import("./pages/PerformancePage"));
+const FeedSystemPage = lazy(() => import("./pages/FeedSystemPage"));
 
 function Loading() {
   return (
@@ -67,10 +70,9 @@ const routes: RouteObject[] = [
       { path: "engine",          element: withSuspense(<EnginePage />) },
       { path: "cooling",         element: withSuspense(<CoolingPage />) },
       { path: "structural",      element: withSuspense(<StructuralPage />) },
-      { path: "contour",         element: <ComingSoon name="Nozzle Contour" /> },
-      { path: "throttle",        element: <ComingSoon name="Throttle Analysis" /> },
-      { path: "analysis",        element: <ComingSoon name="Off-Design Analysis" /> },
-      { path: "feed-system",     element: <ComingSoon name="Feed System" /> },
+      { path: "contour",         element: withSuspense(<NozzleContourPage />) },
+      { path: "performance",     element: withSuspense(<PerformancePage />) },
+      { path: "feed-system",     element: withSuspense(<FeedSystemPage />) },
       { path: "monte-carlo",     element: <ComingSoon name="Monte Carlo" /> },
       { path: "optimization",    element: <ComingSoon name="Optimization" /> },
       { path: "injector",        element: <ComingSoon name="Injector Design" /> },
