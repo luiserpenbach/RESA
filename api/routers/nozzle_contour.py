@@ -42,6 +42,7 @@ def _require_engine_result(session):
 
 def _generate_contour(session_id: str, req: ContourConfigRequest) -> dict:
     """Synchronous contour generation - runs in thread pool."""
+    import numpy as np
     from resa.geometry.nozzle import NozzleGenerator
 
     session = _get_session_or_raise(session_id)
@@ -70,9 +71,22 @@ def _generate_contour(session_id: str, req: ContourConfigRequest) -> dict:
         nozzle_geom = generator.generate(**gen_kwargs)
 
     # Convert arrays from meters to mm
-    x_full_mm = (nozzle_geom.x_full * 1000).tolist()
-    y_full_mm = (nozzle_geom.y_full * 1000).tolist()
+    x_full_raw = nozzle_geom.x_full * 1000
+    y_full_raw = nozzle_geom.y_full * 1000
 
+    # Resample to requested resolution
+    n_orig = len(x_full_raw)
+    n_target = max(10, req.resolution)
+    if n_target != n_orig:
+        t_orig = np.linspace(0, 1, n_orig)
+        t_new = np.linspace(0, 1, n_target)
+        x_full_mm = np.interp(t_new, t_orig, x_full_raw).tolist()
+        y_full_mm = np.interp(t_new, t_orig, y_full_raw).tolist()
+    else:
+        x_full_mm = x_full_raw.tolist()
+        y_full_mm = y_full_raw.tolist()
+
+    # Section arrays (keep original resolution for plot accuracy)
     x_chamber_mm = (
         (nozzle_geom.x_chamber * 1000).tolist()
         if nozzle_geom.x_chamber is not None
