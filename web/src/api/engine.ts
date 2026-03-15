@@ -3,6 +3,7 @@ import client from "./client";
 import type {
   EngineConfigRequest,
   EngineDesignResponse,
+  ParameterStudyResponse,
   ValidationResponse,
 } from "../types/engine";
 
@@ -42,6 +43,22 @@ export function useDesignMutation() {
       config: EngineConfigRequest;
       withCooling?: boolean;
     }) => designEngine(config, withCooling),
+  });
+}
+
+export async function runParameterStudy(
+  config: EngineConfigRequest
+): Promise<ParameterStudyResponse> {
+  const { data } = await client.post<ParameterStudyResponse>(
+    "/engine/parameter-study",
+    config
+  );
+  return data;
+}
+
+export function useParameterStudyMutation() {
+  return useMutation({
+    mutationFn: runParameterStudy,
   });
 }
 

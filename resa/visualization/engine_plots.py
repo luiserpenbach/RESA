@@ -518,7 +518,8 @@ class NozzleContourPlotter:
             result: EngineDesignResult (cooling not required)
 
         Returns:
-            Plotly Figure with contour + area ratio overlay
+            Plotly Figure with contour + area ratio overlay. Y-axis is locked to
+            1:1 aspect ratio so the geometry is geometrically accurate.
         """
         geo = result.nozzle_geometry
         x_mm = geo.x_full * 1000
@@ -601,11 +602,13 @@ class NozzleContourPlotter:
                 annotation_font_color=color,
             )
 
-        # ── Layout ───────────────────────────────────────────────────────────
+        # ── Layout — enforce 1:1 geometric aspect ratio ───────────────────────
         max_r = float(np.max(y_mm))
         fig.update_yaxes(
             title_text="Radius [mm]", row=1, col=1, secondary_y=False,
             range=[-max_r * 1.45, max_r * 1.45],
+            scaleanchor="x",
+            scaleratio=1,
         )
         fig.update_yaxes(
             title_text="A / At", row=1, col=1, secondary_y=True,
@@ -621,6 +624,224 @@ class NozzleContourPlotter:
             legend=dict(orientation='h', y=1.08, x=0, font=dict(size=10)),
             hovermode='x unified',
             title=dict(text="Nozzle Contour", font=dict(size=13), x=0.5),
+        )
+        self.theme.apply_to_figure(fig)
+        return fig
+
+    def to_html(self, fig: go.Figure, include_plotlyjs: str = 'cdn', full_html: bool = False) -> str:
+        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=full_html)
+
+
+# =============================================================================
+# ENGINE PRIMARY DASHBOARD PLOTTER  (no cooling data required)
+# =============================================================================
+
+class EnginePrimaryDashboardPlotter:
+    """
+    4-panel engine dashboard that works without cooling data.
+
+    Panels:
+    1. 2D Nozzle Contour — upper + lower wall, geometrically accurate 1:1 aspect ratio
+    2. Mach Number profile along nozzle axis
+    3. Static Temperature [K] profile (absolute, not ratio)
+    4. Static Pressure [bar] profile (absolute, not ratio)
+
+    All gas dynamics are computed from isentropic relations using CEA outputs.
+
+    Example:
+        plotter = EnginePrimaryDashboardPlotter(theme=DarkTheme())
+        fig = plotter.create_figure(result, config)
+        html = fig.to_json()
+    """
+
+    def __init__(self, theme: Optional[PlotTheme] = None):
+        self.theme = theme or DEFAULT_THEME
+
+    def create_figure(self, result: 'EngineDesignResult', config=None) -> go.Figure:
+        """
+        Create the 4-panel primary dashboard figure.
+
+        Args:
+            result: EngineDesignResult (cooling NOT required)
+            config: EngineConfig (optional, used for title)
+
+        Returns:
+            Plotly Figure with 4 subplots in a 2×2 grid
+        """
+        geo = result.nozzle_geometry
+        x_mm = geo.x_full * 1000  # [mm]
+        y_mm = geo.y_full * 1000  # [mm] — radii
+
+        mach = np.asarray(result.mach_numbers)
+        gamma = result.combustion.gamma
+        Tc = result.combustion.T_combustion  # [K]
+        Pc = result.pc_bar                   # [bar]
+
+        # Isentropic station properties
+        T_static = Tc / (1.0 + (gamma - 1.0) / 2.0 * mach ** 2)          # [K]
+        P_static = Pc * (T_static / Tc) ** (gamma / (gamma - 1.0))        # [bar]
+
+        throat_idx = int(np.argmin(y_mm))
+        throat_x = float(x_mm[throat_idx])
+
+        engine_name = config.engine_name if config else "Engine"
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=(
+                "Nozzle Contour (1:1 scale)",
+                "Mach Number",
+                "Static Temperature [K]",
+                "Static Pressure [bar]",
+            ),
+            horizontal_spacing=0.12,
+            vertical_spacing=0.14,
+        )
+
+        # ── Panel 1: Nozzle Contour ───────────────────────────────────────────
+        # Upper wall fill
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([x_mm, x_mm[::-1]]),
+            y=np.concatenate([y_mm, np.zeros_like(y_mm)]),
+            fill='toself',
+            fillcolor='rgba(70, 90, 120, 0.25)',
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo='skip',
+        ), row=1, col=1)
+
+        # Lower wall fill
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([x_mm, x_mm[::-1]]),
+            y=np.concatenate([-y_mm, np.zeros_like(y_mm)]),
+            fill='toself',
+            fillcolor='rgba(70, 90, 120, 0.25)',
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo='skip',
+        ), row=1, col=1)
+
+        # Upper wall contour
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=y_mm,
+            mode='lines',
+            name='Wall',
+            line=dict(color=self.theme.steel, width=2),
+            hovertemplate='x=%{x:.1f} mm  r=%{y:.2f} mm<extra></extra>',
+        ), row=1, col=1)
+
+        # Lower wall contour (mirror)
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=-y_mm,
+            mode='lines',
+            showlegend=False,
+            line=dict(color=self.theme.steel, width=2),
+            hoverinfo='skip',
+        ), row=1, col=1)
+
+        # Centreline
+        fig.add_trace(go.Scatter(
+            x=[float(x_mm[0]), float(x_mm[-1])], y=[0, 0],
+            mode='lines',
+            showlegend=False,
+            line=dict(color='rgba(100,120,160,0.35)', width=1, dash='dash'),
+            hoverinfo='skip',
+        ), row=1, col=1)
+
+        # Throat marker
+        fig.add_trace(go.Scatter(
+            x=[throat_x, throat_x],
+            y=[-float(y_mm[throat_idx]) - 2, float(y_mm[throat_idx]) + 2],
+            mode='lines',
+            showlegend=False,
+            line=dict(color=self.theme.danger, width=1.5, dash='dot'),
+            hoverinfo='skip',
+        ), row=1, col=1)
+
+        # ── Panel 2: Mach Number ──────────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=mach,
+            mode='lines',
+            name='Mach',
+            line=dict(color=self.theme.accent, width=2),
+            hovertemplate='x=%{x:.1f} mm<br>M=%{y:.3f}<extra></extra>',
+        ), row=1, col=2)
+
+        # M=1 reference
+        fig.add_hline(
+            y=1.0, row=1, col=2,
+            line=dict(color=self.theme.danger, width=1, dash='dash'),
+            annotation_text="M = 1",
+            annotation_font_size=9,
+        )
+
+        # ── Panel 3: Static Temperature ───────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=T_static,
+            mode='lines',
+            name='T_static [K]',
+            line=dict(color='#e07040', width=2),
+            hovertemplate='x=%{x:.1f} mm<br>T=%{y:.0f} K<extra></extra>',
+        ), row=2, col=1)
+
+        # ── Panel 4: Static Pressure ──────────────────────────────────────────
+        fig.add_trace(go.Scatter(
+            x=x_mm, y=P_static,
+            mode='lines',
+            name='P_static [bar]',
+            line=dict(color='#4090d0', width=2),
+            hovertemplate='x=%{x:.1f} mm<br>P=%{y:.3f} bar<extra></extra>',
+        ), row=2, col=2)
+
+        # ── Throat markers on all three gas dynamics panels ───────────────────
+        for row, col in [(1, 2), (2, 1), (2, 2)]:
+            fig.add_vline(
+                x=throat_x, row=row, col=col,
+                line=dict(color=self.theme.danger, width=1, dash='dot'),
+            )
+
+        # ── Axis labels ───────────────────────────────────────────────────────
+        max_r = float(np.max(y_mm))
+
+        # Panel 1 — enforce 1:1 aspect on contour
+        fig.update_xaxes(title_text="x [mm]", row=1, col=1)
+        fig.update_yaxes(
+            title_text="r [mm]", row=1, col=1,
+            range=[-max_r * 1.5, max_r * 1.5],
+            scaleanchor="x",
+            scaleratio=1,
+        )
+
+        # Panel 2
+        fig.update_xaxes(title_text="x [mm]", row=1, col=2)
+        fig.update_yaxes(title_text="Mach", row=1, col=2, rangemode='tozero')
+
+        # Panel 3
+        fig.update_xaxes(title_text="x [mm]", row=2, col=1)
+        fig.update_yaxes(title_text="T [K]", row=2, col=1, rangemode='tozero')
+
+        # Panel 4
+        fig.update_xaxes(title_text="x [mm]", row=2, col=2)
+        fig.update_yaxes(title_text="P [bar]", row=2, col=2, rangemode='tozero')
+
+        # ── Layout ────────────────────────────────────────────────────────────
+        fig.update_layout(
+            height=640,
+            title=dict(
+                text=f"{engine_name}  ·  {result.pc_bar:.1f} bar  ·  O/F {result.mr:.2f}",
+                x=0.5,
+                font=dict(size=14),
+            ),
+            showlegend=True,
+            legend=dict(
+                orientation='h',
+                y=-0.08,
+                x=0.5,
+                xanchor='center',
+                font=dict(size=10),
+            ),
+            hovermode='x unified',
+            margin=dict(l=55, r=30, t=70, b=60),
         )
         self.theme.apply_to_figure(fig)
         return fig
