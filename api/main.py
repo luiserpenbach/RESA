@@ -18,7 +18,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from api.routers import config_io, cooling, engine, session, structural
+from api.routers import (
+    config_io,
+    cooling,
+    engine,
+    feed_system,
+    nozzle_contour,
+    performance,
+    session,
+    structural,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,6 +69,9 @@ app.include_router(config_io.router, prefix=API_PREFIX)
 app.include_router(session.router, prefix=API_PREFIX)
 app.include_router(cooling.router, prefix=API_PREFIX)
 app.include_router(structural.router, prefix=API_PREFIX)
+app.include_router(nozzle_contour.router, prefix=API_PREFIX)
+app.include_router(performance.router, prefix=API_PREFIX)
+app.include_router(feed_system.router, prefix=API_PREFIX)
 
 
 @app.get("/health")
