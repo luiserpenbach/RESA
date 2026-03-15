@@ -10,6 +10,7 @@ import {
   TextArea,
   Slider,
 } from "@blueprintjs/core";
+
 import { FormField } from "./FormField";
 import { ValidationBanner } from "../metrics/ValidationBanner";
 import { useValidateMutation } from "../../api/engine";
@@ -31,24 +32,6 @@ const FUELS = [
 const OXIDIZERS = ["N2O", "Nitrous", "LOX", "O2", "H2O2"];
 
 const NOZZLE_TYPES = ["bell", "conical", "ideal"];
-
-const COOLING_MODES = ["counter-flow", "co-flow"];
-
-const WALL_MATERIALS = [
-  "inconel718",
-  "inconel625",
-  "copper",
-  "stainless316",
-  "aluminum6061",
-  "haynes230",
-];
-
-const COOLANTS = [
-  "REFPROP::NitrousOxide",
-  "REFPROP::Ethanol",
-  "Water",
-  "REFPROP::Propane",
-];
 
 interface EngineConfigFormProps {
   onRunDesign?: () => void;
@@ -329,114 +312,6 @@ export function EngineConfigForm({
         </FormField>
       </div>
 
-      <Divider style={{ margin: "16px 0" }} />
-
-      {/* ── COOLING SYSTEM ───────────────────────────────────── */}
-      <H5 style={{ color: "#7ba7cc", marginBottom: 12 }}>Cooling System</H5>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <FormField label="Coolant">
-          <HTMLSelect
-            value={localConfig.coolant_name}
-            onChange={(e) => updateField("coolant_name", e.target.value)}
-            options={COOLANTS}
-            fill
-          />
-        </FormField>
-        <FormField label="Cooling Mode">
-          <HTMLSelect
-            value={localConfig.cooling_mode}
-            onChange={(e) =>
-              updateField(
-                "cooling_mode",
-                e.target.value as EngineConfigRequest["cooling_mode"]
-              )
-            }
-            options={COOLING_MODES}
-            fill
-          />
-        </FormField>
-        <FormField label="Coolant Inlet Pressure" unit="bar">
-          <NumericInput
-            value={localConfig.coolant_p_in_bar}
-            onValueChange={(v) => updateField("coolant_p_in_bar", v)}
-            min={1}
-            stepSize={1}
-            fill
-          />
-        </FormField>
-        <FormField label="Coolant Inlet Temperature" unit="K">
-          <NumericInput
-            value={localConfig.coolant_t_in_k}
-            onValueChange={(v) => updateField("coolant_t_in_k", v)}
-            min={150}
-            max={600}
-            stepSize={1}
-            fill
-          />
-        </FormField>
-        <FormField label="Channel Width at Throat" unit="mm">
-          <NumericInput
-            value={localConfig.channel_width_throat * 1000}
-            onValueChange={(v) => updateField("channel_width_throat", v / 1000)}
-            min={0.1}
-            max={10}
-            stepSize={0.1}
-            minorStepSize={0.01}
-            fill
-          />
-        </FormField>
-        <FormField label="Channel Height" unit="mm">
-          <NumericInput
-            value={localConfig.channel_height * 1000}
-            onValueChange={(v) => updateField("channel_height", v / 1000)}
-            min={0.1}
-            max={10}
-            stepSize={0.1}
-            minorStepSize={0.01}
-            fill
-          />
-        </FormField>
-        <FormField label="Rib Width at Throat" unit="mm">
-          <NumericInput
-            value={localConfig.rib_width_throat * 1000}
-            onValueChange={(v) => updateField("rib_width_throat", v / 1000)}
-            min={0.1}
-            max={10}
-            stepSize={0.1}
-            minorStepSize={0.01}
-            fill
-          />
-        </FormField>
-        <FormField label="Wall Thickness" unit="mm">
-          <NumericInput
-            value={localConfig.wall_thickness * 1000}
-            onValueChange={(v) => updateField("wall_thickness", v / 1000)}
-            min={0.1}
-            max={10}
-            stepSize={0.1}
-            minorStepSize={0.01}
-            fill
-          />
-        </FormField>
-        <FormField label="Wall Material">
-          <HTMLSelect
-            value={localConfig.wall_material}
-            onChange={(e) => updateField("wall_material", e.target.value)}
-            options={WALL_MATERIALS}
-            fill
-          />
-        </FormField>
-        <FormField label="Coolant Mass Fraction">
-          <NumericInput
-            value={localConfig.coolant_mass_fraction}
-            onValueChange={(v) => updateField("coolant_mass_fraction", v)}
-            min={0.1}
-            max={1.0}
-            stepSize={0.05}
-            fill
-          />
-        </FormField>
-      </div>
 
       <Divider style={{ margin: "16px 0" }} />
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "@blueprintjs/core";
 import { AnimatedValue } from "./AnimatedValue";
 import { exportYaml } from "../../api/engine";
-import type { EngineDesignResponse, EngineConfigRequest } from "../../types/engine";
+import type { EngineDesignResponse, EngineConfigRequest, StationProperties } from "../../types/engine";
 
 interface MetricsPanelProps {
   result: EngineDesignResponse | null;
@@ -153,13 +153,36 @@ export function MetricsPanel({ result: r, config, isLoading }: MetricsPanelProps
         {/* ── GEOMETRY ────────────────────────────── */}
         <Section label="Geometry">
           {isLoading ? (
-            <SkeletonRows n={4} />
+            <SkeletonRows n={6} />
           ) : r ? (
             <div className="metric-block">
-              <MRow name="Throat Ø" value={r.dt_mm} unit="mm" decimals={1} />
+              <MRow name="Chamber Ø" value={r.dc_mm} unit="mm" decimals={1} />
+              <MRow name="Throat Ø" value={r.dt_mm} unit="mm" decimals={2} />
               <MRow name="Exit Ø" value={r.de_mm} unit="mm" decimals={1} />
-              <MRow name="Length" value={r.length_mm} unit="mm" decimals={0} />
-              <MRow name="Expansion ratio" value={r.expansion_ratio} unit="" decimals={2} />
+              <MRow name="L chamber" value={r.L_chamber_mm} unit="mm" decimals={1} />
+              <MRow name="L convergent" value={r.L_convergent_mm} unit="mm" decimals={1} />
+              <MRow name="L divergent" value={r.L_divergent_mm} unit="mm" decimals={1} />
+              <MRow name="L total" value={r.length_mm} unit="mm" decimals={0} />
+              <MRow name="Contraction ratio" value={r.contraction_ratio} unit="" decimals={2} />
+              <MRow name="Expansion ratio" value={r.expansion_ratio} unit="" decimals={3} />
+              <SRow name="Exit half-angle" value={r.theta_exit_deg != null ? `${r.theta_exit_deg.toFixed(1)}°` : "—"} />
+            </div>
+          ) : (
+            <EmptyMetric />
+          )}
+        </Section>
+
+        {/* ── STATION PROPERTIES ──────────────────── */}
+        <Section label="Station Properties" defaultOpen={true}>
+          {isLoading ? (
+            <SkeletonRows n={5} />
+          ) : r?.station_chamber ? (
+            <div style={{ padding: "4px 0" }}>
+              <StationTable
+                chamber={r.station_chamber}
+                throat={r.station_throat}
+                exit={r.station_exit}
+              />
             </div>
           ) : (
             <EmptyMetric />
@@ -167,20 +190,19 @@ export function MetricsPanel({ result: r, config, isLoading }: MetricsPanelProps
         </Section>
 
         {/* ── COMBUSTION ──────────────────────────── */}
-        <Section label="Combustion" defaultOpen={true}>
+        <Section label="Combustion" defaultOpen={false}>
           {isLoading ? (
             <SkeletonRows n={6} />
           ) : r?.combustion ? (
             <div className="metric-block">
-              <MRow name="Chamber pressure" value={r.combustion.pc_bar} unit="bar" decimals={1} />
-              <MRow name="Mixture ratio" value={r.combustion.mr} unit="O/F" decimals={3} />
-              <MRow name="C*" value={r.combustion.cstar} unit="m/s" decimals={0} />
               <MRow name="Flame temp" value={r.combustion.T_combustion} unit="K" decimals={0} status={
                 r.combustion.T_combustion ? r.combustion.T_combustion > 3600 ? "warn" : "good" : "neutral"
               } />
+              <MRow name="C* (theoretical)" value={r.combustion.cstar} unit="m/s" decimals={0} />
               <MRow name="γ (gamma)" value={r.combustion.gamma} unit="" decimals={4} />
               <MRow name="Mol weight" value={r.combustion.mw} unit="g/mol" decimals={2} />
               <SRow name="Mach at exit" value={r.combustion.mach_exit?.toFixed(3)} />
+              <SRow name="Isp (CEA, vac)" value={r.combustion.isp_vac?.toFixed(1) + " s"} />
             </div>
           ) : (
             <EmptyMetric />
@@ -295,6 +317,80 @@ export function MetricsPanel({ result: r, config, isLoading }: MetricsPanelProps
         )}
       </div>
     </div>
+  );
+}
+
+/** Compact 3-column station table (chamber / throat / exit). */
+function StationTable({
+  chamber, throat, exit,
+}: {
+  chamber: StationProperties | null | undefined;
+  throat: StationProperties | null | undefined;
+  exit: StationProperties | null | undefined;
+}) {
+  const cols = [
+    { label: "CHA", data: chamber },
+    { label: "THR", data: throat },
+    { label: "EXI", data: exit },
+  ];
+  const rows: { name: string; key: keyof StationProperties; unit: string; decs: number }[] = [
+    { name: "Mach",    key: "mach",  unit: "",    decs: 3 },
+    { name: "T [K]",  key: "T_k",   unit: "",    decs: 0 },
+    { name: "P [bar]", key: "P_bar", unit: "",    decs: 3 },
+    { name: "ρ [kg/m³]", key: "rho", unit: "",   decs: 2 },
+    { name: "V [m/s]", key: "V_ms", unit: "",    decs: 0 },
+  ];
+
+  const headerStyle: React.CSSProperties = {
+    fontSize: 9,
+    fontFamily: "var(--font-mono)",
+    color: "var(--text-muted)",
+    textAlign: "right" as const,
+    paddingRight: 6,
+    paddingBottom: 4,
+    letterSpacing: "0.08em",
+  };
+  const cellStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontFamily: "var(--font-mono)",
+    color: "var(--text-primary)",
+    textAlign: "right" as const,
+    paddingRight: 6,
+    paddingBottom: 3,
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: "var(--text-muted)",
+    paddingLeft: 10,
+    paddingBottom: 3,
+  };
+
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+      <thead>
+        <tr>
+          <th style={{ ...headerStyle, textAlign: "left" as const, width: "36%" }}></th>
+          {cols.map((c) => (
+            <th key={c.label} style={headerStyle}>{c.label}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.key}>
+            <td style={labelStyle}>{row.name}</td>
+            {cols.map((c) => {
+              const v = c.data?.[row.key] as number | undefined;
+              return (
+                <td key={c.label} style={cellStyle}>
+                  {v != null ? v.toFixed(row.decs) : "—"}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

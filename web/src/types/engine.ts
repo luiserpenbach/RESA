@@ -111,6 +111,14 @@ export interface CombustionResultResponse {
   mach_exit: number;
 }
 
+export interface StationProperties {
+  T_k: number;      // Static temperature [K]
+  P_bar: number;    // Static pressure [bar]
+  rho: number;      // Density [kg/m³]
+  V_ms: number;     // Velocity [m/s]
+  mach: number;     // Mach number
+}
+
 export interface EngineDesignResponse {
   timestamp: string;
   run_type: string;
@@ -127,12 +135,21 @@ export interface EngineDesignResponse {
   de_mm: number;
   length_mm: number;
   expansion_ratio: number;
+  // Complete geometry
+  dc_mm?: number | null;
+  L_chamber_mm?: number | null;
+  L_convergent_mm?: number | null;
+  L_divergent_mm?: number | null;
+  contraction_ratio?: number | null;
+  theta_exit_deg?: number | null;
+  // Combustion
   combustion?: CombustionResultResponse;
+  // Station thermodynamics
+  station_chamber?: StationProperties | null;
+  station_throat?: StationProperties | null;
+  station_exit?: StationProperties | null;
   // Plotly JSON strings
   figure_dashboard?: string | null;
-  figure_contour?: string | null;
-  figure_gas_dynamics?: string | null;
-  figure_3d?: string | null;
   // Cooling
   max_wall_temp?: number | null;
   max_heat_flux?: number | null;
@@ -141,5 +158,10 @@ export interface EngineDesignResponse {
   // Nozzle contour
   contour_x_mm?: number[] | null;
   contour_y_mm?: number[] | null;
+  warnings: string[];
+}
+
+export interface ParameterStudyResponse {
+  figure_study?: string | null;
   warnings: string[];
 }

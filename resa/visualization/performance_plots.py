@@ -375,6 +375,258 @@ class PerformanceContourPlotter:
         )
 
 
+class ParameterStudyPlotter:
+    """
+    Runs CEA sweeps and produces a 2×2 parametric study figure.
+
+    Sweeps:
+    1. Isp_vac & C* vs O/F ratio at design Pc
+    2. Isp_vac vs Chamber Pressure at design O/F
+    3. Vacuum Isp vs Expansion Ratio at design Pc + MR
+    4. CF_vac & CF_SL vs Expansion Ratio at design Pc + MR
+
+    Example:
+        plotter = ParameterStudyPlotter(theme=DarkTheme())
+        fig = plotter.run_and_plot(fuel, oxidizer, pc, mr, eps)
+        html = fig.to_json()
+    """
+
+    def __init__(self, theme=None):
+        from resa.visualization.themes import DEFAULT_THEME
+        self.theme = theme or DEFAULT_THEME
+
+    # ------------------------------------------------------------------
+    # Sweep helpers
+    # ------------------------------------------------------------------
+
+    def _mr_sweep(self, fuel: str, oxidizer: str, pc: float, eps: float,
+                  mr_design: float, n: int = 35):
+        """Sweep mixture ratio, return (mrs, isp_vac, cstar)."""
+        from resa.solvers.combustion import CEASolver
+        solver = CEASolver(fuel, oxidizer)
+        mr_min = max(0.5, mr_design * 0.35)
+        mr_max = mr_design * 2.8
+        mrs = np.linspace(mr_min, mr_max, n)
+        isps, cstars = [], []
+        for mr in mrs:
+            try:
+                r = solver.run(pc, float(mr), eps)
+                isps.append(r.isp_vac)
+                cstars.append(r.cstar)
+            except Exception:
+                isps.append(np.nan)
+                cstars.append(np.nan)
+        return mrs, np.array(isps), np.array(cstars)
+
+    def _pc_sweep(self, fuel: str, oxidizer: str, mr: float, eps: float,
+                  pc_design: float, n: int = 30):
+        """Sweep chamber pressure, return (pcs, isp_vac)."""
+        from resa.solvers.combustion import CEASolver
+        solver = CEASolver(fuel, oxidizer)
+        pc_min = max(5.0, pc_design * 0.15)
+        pc_max = max(200.0, pc_design * 3.5)
+        pcs = np.linspace(pc_min, pc_max, n)
+        isps = []
+        for pc in pcs:
+            try:
+                r = solver.run(float(pc), mr, eps)
+                isps.append(r.isp_vac)
+            except Exception:
+                isps.append(np.nan)
+        return pcs, np.array(isps)
+
+    def _eps_sweep(self, fuel: str, oxidizer: str, pc: float, mr: float,
+                   n: int = 40):
+        """Sweep expansion ratio, return (epss, isp_vac, cf_vac, cf_sl)."""
+        from resa.solvers.combustion import CEASolver
+        solver = CEASolver(fuel, oxidizer)
+        epss = np.concatenate([
+            np.linspace(1.5, 10.0, 20),
+            np.linspace(10.5, 60.0, 20),
+        ])
+        isp_vac, cf_vac, cf_sl = [], [], []
+        p_amb = 1.013  # bar sea-level
+        g0 = 9.80665
+        for eps in epss:
+            try:
+                r = solver.run(pc, mr, float(eps))
+                isp_vac.append(r.isp_vac)
+                cf_v = r.isp_vac * g0 / r.cstar if r.cstar > 0 else np.nan
+                M_e = r.mach_exit
+                gamma = getattr(r, 'gamma', 1.2)
+                p_ratio = (1 + (gamma - 1) / 2 * M_e ** 2) ** (-gamma / (gamma - 1))
+                p_exit_bar = pc * p_ratio
+                cf_sl_val = cf_v - float(eps) * (p_amb - p_exit_bar) / pc
+                cf_vac.append(cf_v)
+                cf_sl.append(cf_sl_val)
+            except Exception:
+                isp_vac.append(np.nan)
+                cf_vac.append(np.nan)
+                cf_sl.append(np.nan)
+        return epss, np.array(isp_vac), np.array(cf_vac), np.array(cf_sl)
+
+    # ------------------------------------------------------------------
+    # Main figure builder
+    # ------------------------------------------------------------------
+
+    def run_and_plot(
+        self,
+        fuel: str,
+        oxidizer: str,
+        pc: float,
+        mr: float,
+        eps: float,
+    ) -> go.Figure:
+        """
+        Run all sweeps and return a 2×2 Plotly figure.
+
+        Args:
+            fuel: Fuel name (e.g. 'Ethanol90')
+            oxidizer: Oxidizer name (e.g. 'N2O')
+            pc: Design chamber pressure [bar]
+            mr: Design mixture ratio (O/F)
+            eps: Design expansion ratio (0 → use 6.0 default)
+
+        Returns:
+            Plotly Figure with 4 parametric study panels
+        """
+        eps_design = eps if eps and eps > 1.0 else 6.0
+
+        mrs, isp_mr, cstar_mr = self._mr_sweep(fuel, oxidizer, pc, eps_design, mr)
+        pcs, isp_pc = self._pc_sweep(fuel, oxidizer, mr, eps_design, pc)
+        epss, isp_eps, cf_vac_eps, cf_sl_eps = self._eps_sweep(fuel, oxidizer, pc, mr)
+
+        try:
+            from resa.solvers.combustion import CEASolver
+            dp = CEASolver(fuel, oxidizer).run(pc, mr, eps_design)
+            dp_isp = dp.isp_vac
+        except Exception:
+            dp_isp = float(np.nanmean(isp_mr))
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=(
+                f"Isp & C* vs O/F  (Pc = {pc:.0f} bar)",
+                f"Isp vs Chamber Pressure  (O/F = {mr:.2f})",
+                f"Vacuum Isp vs Expansion Ratio  (Pc = {pc:.0f} bar, O/F = {mr:.2f})",
+                "Thrust Coefficient CF vs Expansion Ratio",
+            ),
+            specs=[
+                [{"secondary_y": True}, {"secondary_y": False}],
+                [{"secondary_y": False}, {"secondary_y": True}],
+            ],
+            horizontal_spacing=0.14,
+            vertical_spacing=0.18,
+        )
+
+        accent = self.theme.accent
+        primary = self.theme.primary
+        secondary = self.theme.secondary
+        danger = self.theme.danger
+
+        # Panel 1: Isp & C* vs O/F
+        fig.add_trace(go.Scatter(
+            x=mrs, y=isp_mr, name='Isp_vac [s]', mode='lines',
+            line=dict(color=accent, width=2),
+            hovertemplate='O/F=%{x:.2f}<br>Isp=%{y:.1f} s<extra></extra>',
+        ), row=1, col=1, secondary_y=False)
+
+        fig.add_trace(go.Scatter(
+            x=mrs, y=cstar_mr, name='C* [m/s]', mode='lines',
+            line=dict(color=secondary, width=2, dash='dash'),
+            hovertemplate='O/F=%{x:.2f}<br>C*=%{y:.0f} m/s<extra></extra>',
+        ), row=1, col=1, secondary_y=True)
+
+        fig.add_trace(go.Scatter(
+            x=[mr], y=[dp_isp], mode='markers', name='Design point',
+            marker=dict(size=10, color='gold', symbol='star', line=dict(color='black', width=1)),
+            hovertemplate=f'Design: O/F={mr:.2f}, Isp={dp_isp:.1f} s<extra></extra>',
+        ), row=1, col=1, secondary_y=False)
+
+        # Panel 2: Isp vs Pc
+        fig.add_trace(go.Scatter(
+            x=pcs, y=isp_pc, mode='lines', showlegend=False,
+            line=dict(color=primary, width=2),
+            hovertemplate='Pc=%{x:.1f} bar<br>Isp=%{y:.1f} s<extra></extra>',
+        ), row=1, col=2)
+
+        fig.add_trace(go.Scatter(
+            x=[pc], y=[dp_isp], mode='markers', showlegend=False,
+            marker=dict(size=10, color='gold', symbol='star', line=dict(color='black', width=1)),
+            hovertemplate=f'Design: Pc={pc:.1f} bar, Isp={dp_isp:.1f} s<extra></extra>',
+        ), row=1, col=2)
+
+        # Panel 3: Isp vs eps
+        fig.add_trace(go.Scatter(
+            x=epss, y=isp_eps, mode='lines', showlegend=False,
+            line=dict(color=accent, width=2),
+            hovertemplate='ε=%{x:.1f}<br>Isp=%{y:.1f} s<extra></extra>',
+        ), row=2, col=1)
+
+        isp_at_design = float(np.interp(eps_design, epss, np.nan_to_num(isp_eps)))
+        fig.add_trace(go.Scatter(
+            x=[eps_design], y=[isp_at_design], mode='markers', showlegend=False,
+            marker=dict(size=10, color='gold', symbol='star', line=dict(color='black', width=1)),
+            hovertemplate=f'Design: ε={eps_design:.1f}, Isp={isp_at_design:.1f} s<extra></extra>',
+        ), row=2, col=1)
+
+        # Panel 4: CF vs eps
+        fig.add_trace(go.Scatter(
+            x=epss, y=cf_vac_eps, name='CF_vac', mode='lines', showlegend=False,
+            line=dict(color=accent, width=2),
+            hovertemplate='ε=%{x:.1f}<br>CF_vac=%{y:.3f}<extra></extra>',
+        ), row=2, col=2, secondary_y=False)
+
+        fig.add_trace(go.Scatter(
+            x=epss, y=cf_sl_eps, name='CF_SL', mode='lines', showlegend=False,
+            line=dict(color=danger, width=2, dash='dash'),
+            hovertemplate='ε=%{x:.1f}<br>CF_SL=%{y:.3f}<extra></extra>',
+        ), row=2, col=2, secondary_y=True)
+
+        cf_v_design = float(np.interp(eps_design, epss, np.nan_to_num(cf_vac_eps)))
+        fig.add_trace(go.Scatter(
+            x=[eps_design], y=[cf_v_design], mode='markers', showlegend=False,
+            marker=dict(size=10, color='gold', symbol='star', line=dict(color='black', width=1)),
+            hoverinfo='skip',
+        ), row=2, col=2, secondary_y=False)
+
+        # Axis labels
+        fig.update_xaxes(title_text="O/F Ratio", row=1, col=1)
+        fig.update_yaxes(title_text="Isp_vac [s]", row=1, col=1, secondary_y=False,
+                         title_font=dict(color=accent))
+        fig.update_yaxes(title_text="C* [m/s]", row=1, col=1, secondary_y=True,
+                         title_font=dict(color=secondary))
+
+        fig.update_xaxes(title_text="Chamber Pressure [bar]", row=1, col=2)
+        fig.update_yaxes(title_text="Isp_vac [s]", row=1, col=2)
+
+        fig.update_xaxes(title_text="Expansion Ratio ε", row=2, col=1)
+        fig.update_yaxes(title_text="Isp_vac [s]", row=2, col=1)
+
+        fig.update_xaxes(title_text="Expansion Ratio ε", row=2, col=2)
+        fig.update_yaxes(title_text="CF_vac", row=2, col=2, secondary_y=False,
+                         title_font=dict(color=accent))
+        fig.update_yaxes(title_text="CF_SL", row=2, col=2, secondary_y=True,
+                         title_font=dict(color=danger))
+
+        fig.update_layout(
+            height=680,
+            title=dict(
+                text=f"Parameter Study  —  {fuel} / {oxidizer}",
+                x=0.5, font=dict(size=14),
+            ),
+            showlegend=True,
+            legend=dict(orientation='h', y=-0.06, x=0.5, xanchor='center', font=dict(size=10)),
+            hovermode='x unified',
+            margin=dict(l=55, r=55, t=70, b=60),
+        )
+        self.theme.apply_to_figure(fig)
+        return fig
+
+    def to_html(self, fig: go.Figure, include_plotlyjs: str = 'cdn', full_html: bool = False) -> str:
+        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=full_html)
+
+
 class OperatingEnvelopePlotter:
     """
     Visualizes engine operating envelope with constraints.

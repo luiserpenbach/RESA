@@ -81,6 +81,15 @@ class CombustionResultResponse(BaseModel):
     mach_exit: float
 
 
+class StationProperties(BaseModel):
+    """Thermodynamic state at a key nozzle station."""
+    T_k: float          # Static temperature [K]
+    P_bar: float        # Static pressure [bar]
+    rho: float          # Density [kg/m³]
+    V_ms: float         # Velocity [m/s]
+    mach: float         # Mach number
+
+
 class EngineDesignResponse(BaseModel):
     """Response model for engine design. Plotly figures are serialized as JSON strings."""
 
@@ -106,14 +115,24 @@ class EngineDesignResponse(BaseModel):
     length_mm: float
     expansion_ratio: float
 
+    # Complete geometry (populated from nozzle_geometry)
+    dc_mm: Optional[float] = None
+    L_chamber_mm: Optional[float] = None
+    L_convergent_mm: Optional[float] = None
+    L_divergent_mm: Optional[float] = None
+    contraction_ratio: Optional[float] = None
+    theta_exit_deg: Optional[float] = None
+
     # Combustion sub-result
     combustion: Optional[CombustionResultResponse] = None
 
+    # Station thermodynamics (chamber, throat, exit)
+    station_chamber: Optional[StationProperties] = None
+    station_throat: Optional[StationProperties] = None
+    station_exit: Optional[StationProperties] = None
+
     # Plotly figures as fig.to_json() strings
     figure_dashboard: Optional[str] = None
-    figure_contour: Optional[str] = None
-    figure_gas_dynamics: Optional[str] = None
-    figure_3d: Optional[str] = None
 
     # Cooling summary (populated when with_cooling=True)
     max_wall_temp: Optional[float] = None
@@ -125,4 +144,10 @@ class EngineDesignResponse(BaseModel):
     contour_x_mm: Optional[list[float]] = None
     contour_y_mm: Optional[list[float]] = None
 
+    warnings: list[str] = []
+
+
+class ParameterStudyResponse(BaseModel):
+    """Response for parameter study sweeps."""
+    figure_study: Optional[str] = None
     warnings: list[str] = []

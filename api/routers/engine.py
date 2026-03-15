@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query
 from api.models.engine_models import (
     EngineConfigRequest,
     EngineDesignResponse,
+    ParameterStudyResponse,
     ValidationResponse,
 )
 from api.services.serialization import serialize_design_result
@@ -95,3 +96,45 @@ async def design_engine(
         raise HTTPException(status_code=500, detail=f"Serialization failed: {exc}") from exc
 
     return EngineDesignResponse(**data)
+
+
+def _run_parameter_study(config, eps: float):
+    """Synchronous CEA sweeps — executed in thread pool."""
+    from resa.visualization.performance_plots import ParameterStudyPlotter
+    from resa.visualization.themes import DarkTheme
+    plotter = ParameterStudyPlotter(theme=DarkTheme())
+    fig = plotter.run_and_plot(
+        fuel=config.fuel,
+        oxidizer=config.oxidizer,
+        pc=config.pc_bar,
+        mr=config.mr,
+        eps=eps,
+    )
+    return fig.to_json()
+
+
+@router.post("/parameter-study", response_model=ParameterStudyResponse)
+async def run_parameter_study(req: EngineConfigRequest) -> ParameterStudyResponse:
+    """
+    Run parametric sweeps (O/F, Pc, expansion ratio) using CEA.
+
+    Returns a serialized Plotly 2×2 figure. No geometry solver is invoked — only CEA.
+    Typical runtime: 2–5 seconds.
+    """
+    try:
+        config = _inflate_config(req)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    eps = req.expansion_ratio if req.expansion_ratio and req.expansion_ratio > 1.0 else 6.0
+
+    loop = asyncio.get_event_loop()
+    try:
+        figure_json = await loop.run_in_executor(
+            None, partial(_run_parameter_study, config, eps)
+        )
+    except Exception as exc:
+        logger.exception("Parameter study failed")
+        raise HTTPException(status_code=500, detail=f"Parameter study failed: {exc}") from exc
+
+    return ParameterStudyResponse(figure_study=figure_json)

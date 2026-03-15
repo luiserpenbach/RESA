@@ -1,6 +1,7 @@
 import { Icon } from "@blueprintjs/core";
-import { SchematicView } from "./SchematicView";
 import { PlotlyRenderer } from "../plots/PlotlyRenderer";
+import { ParameterStudyPanel } from "./ParameterStudyPanel";
+import { SuggestedValuesPanel } from "./SuggestedValuesPanel";
 import { useUiStore, type WorkspaceTab } from "../../store/uiStore";
 import type { EngineDesignResponse, EngineConfigRequest } from "../../types/engine";
 
@@ -10,11 +11,10 @@ interface WorkspacePanelProps {
   isLoading: boolean;
 }
 
-const TABS: { id: WorkspaceTab; label: string; icon: string; needsResult?: boolean }[] = [
-  { id: "schematic", label: "Schematic", icon: "diagram-tree" },
-  { id: "dashboard", label: "Dashboard", icon: "dashboard", needsResult: true },
-  { id: "contour",   label: "Contour + GD", icon: "timeline-line-chart", needsResult: true },
-  { id: "3d",        label: "3D View", icon: "cube", needsResult: true },
+const TABS: { id: WorkspaceTab; label: string; icon: string }[] = [
+  { id: "dashboard",        label: "Dashboard",        icon: "timeline-line-chart" },
+  { id: "parameter_study",  label: "Parameter Study",  icon: "regression-chart" },
+  { id: "suggested_values", label: "Suggested Values", icon: "book" },
 ];
 
 export function WorkspacePanel({ config, result, isLoading }: WorkspacePanelProps) {
@@ -29,8 +29,6 @@ export function WorkspacePanel({ config, result, isLoading }: WorkspacePanelProp
             key={t.id}
             className={`workspace-tab ${workspaceTab === t.id ? "active" : ""}`}
             onClick={() => setWorkspaceTab(t.id)}
-            disabled={t.needsResult && !result && !isLoading}
-            style={{ opacity: t.needsResult && !result && !isLoading ? 0.35 : 1 }}
           >
             <Icon icon={t.icon as never} size={11} />
             {t.label}
@@ -56,45 +54,30 @@ export function WorkspacePanel({ config, result, isLoading }: WorkspacePanelProp
       <div className="workspace-content">
         {isLoading && <LoadingPane />}
 
-        {!isLoading && workspaceTab === "schematic" && (
-          <SchematicView config={config} result={result} />
-        )}
-
-        {!isLoading && workspaceTab === "dashboard" && result && (
+        {/* Dashboard: primary 4-panel figure (contour + Mach + T + P) */}
+        {!isLoading && workspaceTab === "dashboard" && result?.figure_dashboard && (
           <div style={{ padding: 16 }}>
-            <PlotlyRenderer figureJson={result.figure_dashboard} height={480} />
+            <PlotlyRenderer figureJson={result.figure_dashboard} height={640} />
           </div>
         )}
 
-        {!isLoading && workspaceTab === "dashboard" && !result && <EmptyPane tab="dashboard" />}
-
-        {!isLoading && workspaceTab === "contour" && result && (
-          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
-            <PlotlyRenderer figureJson={result.figure_contour} height={320} />
-            <PlotlyRenderer figureJson={result.figure_gas_dynamics} height={320} />
-          </div>
+        {!isLoading && workspaceTab === "dashboard" && !result && (
+          <EmptyPane message="Run a design to see the dashboard." />
         )}
 
-        {!isLoading && workspaceTab === "contour" && !result && <EmptyPane tab="contour" />}
-
-        {!isLoading && workspaceTab === "3d" && result && result.figure_3d && (
-          <div style={{ padding: 16 }}>
-            <PlotlyRenderer figureJson={result.figure_3d} height={520} />
-          </div>
+        {!isLoading && workspaceTab === "dashboard" && result && !result.figure_dashboard && (
+          <EmptyPane message="Dashboard figure not available. Check API logs." />
         )}
 
-        {!isLoading && workspaceTab === "3d" && result && !result.figure_3d && (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <Icon icon="cube" size={32} />
-            </div>
-            <div className="empty-state-text">
-              3D view is not available for this design. Run with cooling enabled to generate the 3D model.
-            </div>
-          </div>
+        {/* Parameter Study: CEA sweeps */}
+        {!isLoading && workspaceTab === "parameter_study" && (
+          <ParameterStudyPanel config={config} />
         )}
 
-        {!isLoading && workspaceTab === "3d" && !result && <EmptyPane tab="3d" />}
+        {/* Suggested Values: empirical reference charts */}
+        {!isLoading && workspaceTab === "suggested_values" && (
+          <SuggestedValuesPanel config={config} result={result} />
+        )}
       </div>
     </>
   );
@@ -110,14 +93,12 @@ function LoadingPane() {
       height: "100%",
       gap: 20,
     }}>
-      {/* Animated engine schematic skeleton */}
       <div style={{
         display: "flex",
         alignItems: "center",
         gap: 4,
         padding: 32,
       }}>
-        {/* Pulsing bars simulating computation */}
         {[0.4, 0.7, 1.0, 0.85, 0.6, 0.45, 0.35].map((h, i) => (
           <div
             key={i}
@@ -150,20 +131,13 @@ function LoadingPane() {
   );
 }
 
-function EmptyPane({ tab }: { tab: string }) {
-  const msgs: Record<string, string> = {
-    dashboard: "Run a design to see the performance dashboard.",
-    contour: "Run a design to see the nozzle contour and gas dynamics.",
-    "3d": "Run a design to generate the 3D nozzle model.",
-  };
+function EmptyPane({ message }: { message: string }) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon">
         <Icon icon="play" size={36} />
       </div>
-      <div className="empty-state-text">
-        {msgs[tab] ?? "Run a design first."}
-      </div>
+      <div className="empty-state-text">{message}</div>
     </div>
   );
 }

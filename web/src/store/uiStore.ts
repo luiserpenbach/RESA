@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type WorkspaceTab = "schematic" | "dashboard" | "contour" | "3d";
+export type WorkspaceTab = "dashboard" | "parameter_study" | "suggested_values";
 
 interface UiStore {
   sidebarCollapsed: boolean;
@@ -27,7 +27,7 @@ export const useUiStore = create<UiStore>((set) => ({
   rightPanelCollapsed: false,
   navCollapsed: false,
   cmdPaletteOpen: false,
-  workspaceTab: "schematic",
+  workspaceTab: "dashboard",
   lastRunTime: null,
   lastRunDuration: null,
 
