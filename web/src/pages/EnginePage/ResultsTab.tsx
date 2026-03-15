@@ -76,24 +76,6 @@ export function ResultsTab({ result, isLoading, error }: ResultsTabProps) {
           </H5>
           <PlotlyRenderer figureJson={result.figure_dashboard} height={500} />
 
-          <H5 style={{ color: "#7ba7cc", margin: "20px 0 12px" }}>
-            Nozzle Contour
-          </H5>
-          <PlotlyRenderer figureJson={result.figure_contour} height={350} />
-
-          <H5 style={{ color: "#7ba7cc", margin: "20px 0 12px" }}>
-            Gas Dynamics
-          </H5>
-          <PlotlyRenderer figureJson={result.figure_gas_dynamics} height={350} />
-
-          {result.figure_3d && (
-            <>
-              <H5 style={{ color: "#7ba7cc", margin: "20px 0 12px" }}>
-                3D Viewer
-              </H5>
-              <PlotlyRenderer figureJson={result.figure_3d} height={500} />
-            </>
-          )}
         </>
       )}
 
