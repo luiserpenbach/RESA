@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Tree, type TreeNodeInfo } from "@blueprintjs/core";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useDesignSessionStore } from "../../store/designSessionStore";
+import type { ModuleName, ModuleStatus } from "../../types/session";
 
 interface NavItem {
   id: string;
   label: string;
   path: string;
   icon?: string;
+  moduleKey?: ModuleName;
 }
 
 interface NavGroup {
@@ -17,12 +20,13 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: "thrust-chamber",
-    label: "Thrust Chamber",
+    id: "design-workflow",
+    label: "Design Workflow",
     items: [
-      { id: "engine", label: "Engine Design", path: "/engine", icon: "flame" },
-      { id: "cooling", label: "Cooling Analysis", path: "/cooling", icon: "snowflake" },
-      { id: "contour", label: "Nozzle Contour", path: "/contour", icon: "curved-range-tree" },
+      { id: "engine", label: "Engine Design", path: "/engine", icon: "flame", moduleKey: "engine" },
+      { id: "contour", label: "Nozzle Contour", path: "/contour", icon: "curved-range-tree", moduleKey: "contour" },
+      { id: "cooling", label: "Cooling Design", path: "/cooling", icon: "snowflake", moduleKey: "cooling" },
+      { id: "structural", label: "Wall Thickness", path: "/structural", icon: "shield", moduleKey: "wall_thickness" },
     ],
   },
   {
@@ -30,7 +34,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Performance",
     items: [
       { id: "throttle", label: "Throttle Analysis", path: "/throttle", icon: "dashboard" },
-      { id: "analysis", label: "Off-Design", path: "/analysis", icon: "function" },
+      { id: "analysis", label: "Off-Design", path: "/analysis", icon: "function", moduleKey: "performance" },
+      { id: "feed-system", label: "Feed System", path: "/feed-system", icon: "flow-branch", moduleKey: "feed_system" },
     ],
   },
   {
@@ -60,9 +65,33 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const STATUS_COLORS: Record<ModuleStatus, string> = {
+  completed: "#43a047",
+  ready: "#5c7d9e",
+  locked: "#2a3f54",
+  stale: "#e65100",
+};
+
+function StatusDot({ status }: { status: ModuleStatus }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        backgroundColor: STATUS_COLORS[status],
+        marginLeft: 6,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 export function NavigationSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const moduleStatus = useDesignSessionStore((s) => s.moduleStatus);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(NAV_GROUPS.map((g) => g.id))
   );
@@ -85,13 +114,21 @@ export function NavigationSidebar() {
       ),
       isExpanded: expandedGroups.has(group.id),
       hasCaret: true,
-      childNodes: group.items.map((item) => ({
-        id: item.id,
-        label: item.label,
-        isSelected: location.pathname === item.path,
-        nodeData: item.path,
-        icon: item.icon as TreeNodeInfo["icon"],
-      })),
+      childNodes: group.items.map((item) => {
+        const status = item.moduleKey ? moduleStatus[item.moduleKey] : undefined;
+        return {
+          id: item.id,
+          label: (
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {item.label}
+              {status && <StatusDot status={status} />}
+            </span>
+          ),
+          isSelected: location.pathname === item.path,
+          nodeData: item.path,
+          icon: item.icon as TreeNodeInfo["icon"],
+        };
+      }),
     }));
   }
 
