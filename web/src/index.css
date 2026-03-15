@@ -215,12 +215,91 @@ body {
   color: var(--text-secondary);
 }
 
+/* ─── Root layout: nav sidebar + app grid ────────────────────────────── */
+.app-root {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+/* ─── Navigation Sidebar ─────────────────────────────────────────────── */
+.app-nav {
+  width: 220px;
+  min-width: 220px;
+  background: #060f1a;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 180ms ease, min-width 180ms ease;
+}
+
+.app-nav.collapsed {
+  width: 42px;
+  min-width: 42px;
+}
+
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.nav-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.app-nav.collapsed .nav-toggle {
+  margin: 8px auto;
+}
+
+/* Nav tree styling overrides */
+.app-nav .bp5-tree {
+  padding: 4px 6px;
+}
+
+.app-nav .bp5-tree-node-content {
+  height: 30px;
+  padding-left: 8px;
+}
+
+.app-nav .bp5-tree-node-label {
+  font-size: 12px;
+}
+
+.app-nav .bp5-tree-node-selected > .bp5-tree-node-content {
+  background: rgba(123, 167, 204, 0.12);
+}
+
+.app-nav .bp5-tree-node-selected > .bp5-tree-node-content .bp5-tree-node-label span {
+  color: var(--accent-bright);
+}
+
 /* ─── App Shell (3-panel grid) ───────────────────────────────────────── */
 .app-shell {
   display: grid;
   grid-template-rows: var(--topbar-height) 1fr var(--statusbar-height);
   grid-template-columns: var(--panel-left) 1fr var(--panel-right);
-  height: 100vh;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   background: var(--bg-base);
 }

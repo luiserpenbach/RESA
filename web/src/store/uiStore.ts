@@ -5,6 +5,7 @@ export type WorkspaceTab = "schematic" | "dashboard" | "contour" | "3d";
 interface UiStore {
   sidebarCollapsed: boolean;
   rightPanelCollapsed: boolean;
+  navCollapsed: boolean;
   cmdPaletteOpen: boolean;
   workspaceTab: WorkspaceTab;
   lastRunTime: number | null;
@@ -13,6 +14,7 @@ interface UiStore {
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
   toggleRightPanel: () => void;
+  toggleNav: () => void;
   toggleCmdPalette: () => void;
   setCmdPaletteOpen: (v: boolean) => void;
   setWorkspaceTab: (tab: WorkspaceTab) => void;
@@ -23,6 +25,7 @@ interface UiStore {
 export const useUiStore = create<UiStore>((set) => ({
   sidebarCollapsed: false,
   rightPanelCollapsed: false,
+  navCollapsed: false,
   cmdPaletteOpen: false,
   workspaceTab: "schematic",
   lastRunTime: null,
@@ -31,6 +34,7 @@ export const useUiStore = create<UiStore>((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
   toggleRightPanel: () => set((s) => ({ rightPanelCollapsed: !s.rightPanelCollapsed })),
+  toggleNav: () => set((s) => ({ navCollapsed: !s.navCollapsed })),
   toggleCmdPalette: () => set((s) => ({ cmdPaletteOpen: !s.cmdPaletteOpen })),
   setCmdPaletteOpen: (v) => set({ cmdPaletteOpen: v }),
   setWorkspaceTab: (tab) => set({ workspaceTab: tab }),

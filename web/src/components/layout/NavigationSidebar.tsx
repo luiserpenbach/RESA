@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Tree, type TreeNodeInfo } from "@blueprintjs/core";
+import { Icon, Tree, type TreeNodeInfo } from "@blueprintjs/core";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDesignSessionStore } from "../../store/designSessionStore";
+import { useUiStore } from "../../store/uiStore";
 import type { ModuleName, ModuleStatus } from "../../types/session";
 
 interface NavItem {
@@ -24,17 +25,47 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Design Workflow",
     items: [
       { id: "engine", label: "Engine Design", path: "/engine", icon: "flame", moduleKey: "engine" },
-      { id: "contour", label: "Nozzle Contour", path: "/contour", icon: "curved-range-tree", moduleKey: "contour" },
-      { id: "cooling", label: "Cooling Design", path: "/cooling", icon: "snowflake", moduleKey: "cooling" },
-      { id: "structural", label: "Wall Thickness", path: "/structural", icon: "shield", moduleKey: "wall_thickness" },
+      {
+        id: "contour",
+        label: "Nozzle Contour",
+        path: "/contour",
+        icon: "curved-range-tree",
+        moduleKey: "contour",
+      },
+      {
+        id: "cooling",
+        label: "Cooling Design",
+        path: "/cooling",
+        icon: "snowflake",
+        moduleKey: "cooling",
+      },
+      {
+        id: "structural",
+        label: "Wall Thickness",
+        path: "/structural",
+        icon: "shield",
+        moduleKey: "wall_thickness",
+      },
     ],
   },
   {
     id: "performance",
     label: "Performance",
     items: [
-      { id: "performance", label: "Performance Maps", path: "/performance", icon: "dashboard", moduleKey: "performance" },
-      { id: "feed-system", label: "Feed System", path: "/feed-system", icon: "flow-branch", moduleKey: "feed_system" },
+      {
+        id: "performance",
+        label: "Performance Maps",
+        path: "/performance",
+        icon: "dashboard",
+        moduleKey: "performance",
+      },
+      {
+        id: "feed-system",
+        label: "Feed System",
+        path: "/feed-system",
+        icon: "flow-branch",
+        moduleKey: "feed_system",
+      },
     ],
   },
   {
@@ -50,7 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Components",
     items: [
       { id: "injector", label: "Injector Design", path: "/injector", icon: "filter" },
-      { id: "igniter", label: "Igniter Design", path: "/igniter", icon: "torch" },
+      { id: "igniter", label: "Igniter Design", path: "/igniter", icon: "flash" },
       { id: "tank", label: "Tank Simulation", path: "/tank", icon: "database" },
     ],
   },
@@ -87,10 +118,15 @@ function StatusDot({ status }: { status: ModuleStatus }) {
   );
 }
 
-export function NavigationSidebar() {
+interface NavigationSidebarProps {
+  collapsed?: boolean;
+}
+
+export function NavigationSidebar({ collapsed }: NavigationSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const moduleStatus = useDesignSessionStore((s) => s.moduleStatus);
+  const toggleNav = useUiStore((s) => s.toggleNav);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(NAV_GROUPS.map((g) => g.id))
   );
@@ -133,7 +169,6 @@ export function NavigationSidebar() {
 
   function handleNodeClick(node: TreeNodeInfo) {
     if (node.childNodes) {
-      // Toggle group
       setExpandedGroups((prev) => {
         const next = new Set(prev);
         if (next.has(String(node.id))) {
@@ -148,43 +183,52 @@ export function NavigationSidebar() {
     }
   }
 
-  return (
-    <div
-      style={{
-        width: 220,
-        minWidth: 220,
-        background: "#0a1929",
-        borderRight: "1px solid #1e3a5f",
-        overflowY: "auto",
-        paddingTop: 8,
-      }}
-    >
-      <div
-        style={{
-          padding: "12px 16px 8px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <span
-          style={{
-            fontSize: "15px",
-            fontWeight: 800,
-            color: "#7ba7cc",
-            letterSpacing: "0.05em",
-          }}
-        >
-          RESA
-        </span>
-        <span style={{ fontSize: "10px", color: "#5c7d9e" }}>v2.0</span>
+  if (collapsed) {
+    return (
+      <div className="app-nav collapsed">
+        <button className="nav-toggle" onClick={toggleNav} title="Expand navigation">
+          <Icon icon="menu" size={16} />
+        </button>
       </div>
-      <Tree
-        contents={buildNodes()}
-        onNodeClick={handleNodeClick}
-        onNodeCollapse={handleNodeClick}
-        onNodeExpand={handleNodeClick}
-      />
+    );
+  }
+
+  return (
+    <div className="app-nav">
+      <div className="nav-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "var(--accent-bright)",
+            }}
+          />
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 700,
+              color: "var(--accent-bright)",
+              letterSpacing: "0.08em",
+            }}
+          >
+            RESA
+          </span>
+          <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>v2.0</span>
+        </div>
+        <button className="nav-toggle" onClick={toggleNav} title="Collapse navigation">
+          <Icon icon="chevron-left" size={14} />
+        </button>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", paddingTop: 4 }}>
+        <Tree
+          contents={buildNodes()}
+          onNodeClick={handleNodeClick}
+          onNodeCollapse={handleNodeClick}
+          onNodeExpand={handleNodeClick}
+        />
+      </div>
     </div>
   );
 }
