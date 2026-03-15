@@ -1,7 +1,24 @@
 import { useEffect } from "react";
 import { Icon } from "@blueprintjs/core";
+import { useLocation } from "react-router-dom";
 import { useUiStore } from "../../store/uiStore";
 import { useEngineStore } from "../../store/engineStore";
+
+const PAGE_NAMES: Record<string, string> = {
+  "/engine": "Engine Design",
+  "/contour": "Nozzle Contour",
+  "/cooling": "Cooling Design",
+  "/structural": "Wall Thickness",
+  "/performance": "Performance Maps",
+  "/feed-system": "Feed System",
+  "/monte-carlo": "Monte Carlo",
+  "/optimization": "Optimization",
+  "/injector": "Injector Design",
+  "/igniter": "Igniter Design",
+  "/tank": "Tank Simulation",
+  "/projects": "Projects",
+  "/settings": "Settings",
+};
 
 interface TopBarProps {
   onRunDesign: () => void;
@@ -9,9 +26,11 @@ interface TopBarProps {
 }
 
 export function TopBar({ onRunDesign, isRunning }: TopBarProps) {
-  const { toggleCmdPalette, setCmdPaletteOpen, toggleSidebar, toggleRightPanel } =
+  const { toggleCmdPalette, setCmdPaletteOpen, toggleSidebar, toggleRightPanel, toggleNav } =
     useUiStore();
   const { activeConfig, lastDesignResult } = useEngineStore();
+  const location = useLocation();
+  const pageName = PAGE_NAMES[location.pathname] ?? "Engine Design";
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -39,17 +58,16 @@ export function TopBar({ onRunDesign, isRunning }: TopBarProps) {
 
   return (
     <header className="app-topbar">
-      {/* Logo */}
-      <div className="topbar-logo">
-        <div className="topbar-logo-dot" />
-        RESA
-      </div>
+      {/* Nav toggle */}
+      <button className="icon-btn" onClick={toggleNav} title="Toggle navigation" style={{ marginLeft: 6 }}>
+        <Icon icon="menu" size={16} />
+      </button>
 
       {/* Breadcrumb */}
       <div className="topbar-breadcrumb">
         <span className="proj-name">{activeConfig.engine_name || "Unnamed Engine"}</span>
         <span className="sep">/</span>
-        <span className="page-name">Engine Design</span>
+        <span className="page-name">{pageName}</span>
       </div>
 
       {/* Status */}
