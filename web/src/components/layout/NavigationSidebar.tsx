@@ -72,17 +72,17 @@ const NAV_GROUPS: NavGroup[] = [
     id: "statistical",
     label: "Analysis",
     items: [
-      { id: "monte-carlo", label: "Monte Carlo", path: "/monte-carlo", icon: "scatter-plot" },
-      { id: "optimization", label: "Optimization", path: "/optimization", icon: "trending-up" },
+      { id: "monte-carlo", label: "Monte Carlo", path: "/monte-carlo", icon: "scatter-plot", moduleKey: "monte_carlo" },
+      { id: "optimization", label: "Optimization", path: "/optimization", icon: "trending-up", moduleKey: "optimization" },
     ],
   },
   {
     id: "components",
     label: "Components",
     items: [
-      { id: "injector", label: "Injector Design", path: "/injector", icon: "filter" },
-      { id: "igniter", label: "Igniter Design", path: "/igniter", icon: "flash" },
-      { id: "tank", label: "Tank Simulation", path: "/tank", icon: "database" },
+      { id: "injector", label: "Injector Design", path: "/injector", icon: "filter", moduleKey: "injector" },
+      { id: "igniter", label: "Igniter Design", path: "/igniter", icon: "flash", moduleKey: "igniter" },
+      { id: "tank", label: "Tank Simulation", path: "/tank", icon: "database", moduleKey: "tank" },
     ],
   },
   {

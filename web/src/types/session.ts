@@ -9,7 +9,12 @@ export type ModuleName =
   | "cooling"
   | "wall_thickness"
   | "performance"
-  | "feed_system";
+  | "feed_system"
+  | "monte_carlo"
+  | "optimization"
+  | "injector"
+  | "igniter"
+  | "tank";
 
 export type ModuleStatus = "locked" | "ready" | "completed" | "stale";
 

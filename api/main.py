@@ -23,10 +23,15 @@ from api.routers import (
     cooling,
     engine,
     feed_system,
+    igniter,
+    injector,
+    monte_carlo,
     nozzle_contour,
+    optimization,
     performance,
     session,
     structural,
+    tank,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -72,6 +77,11 @@ app.include_router(structural.router, prefix=API_PREFIX)
 app.include_router(nozzle_contour.router, prefix=API_PREFIX)
 app.include_router(performance.router, prefix=API_PREFIX)
 app.include_router(feed_system.router, prefix=API_PREFIX)
+app.include_router(igniter.router, prefix=API_PREFIX)
+app.include_router(injector.router, prefix=API_PREFIX)
+app.include_router(tank.router, prefix=API_PREFIX)
+app.include_router(monte_carlo.router, prefix=API_PREFIX)
+app.include_router(optimization.router, prefix=API_PREFIX)
 
 
 @app.get("/health")
