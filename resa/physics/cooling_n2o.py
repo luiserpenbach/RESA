@@ -23,11 +23,12 @@ References:
     - Huzel & Huang, "Modern Engineering for Design of Liquid-Propellant Rocket Engines"
 """
 
-import numpy as np
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, Callable
-from enum import Enum
 import warnings
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Callable, List, Optional, Tuple
+
+import numpy as np
 
 try:
     from CoolProp.CoolProp import PropsSI
@@ -808,10 +809,12 @@ class N2OCoolingSolver:
             self,
             contour: Callable[[float], float],  # r_chamber(x)
             channel_geom: CoolingChannelGeometry,
-            q_flux_profile: Callable[[float], float],  # q"(x) [W/m²]
-            m_dot: float,  # Total mass flow [kg/s]
-            P_inlet: float,  # Inlet pressure [Pa]
-            T_inlet: float,  # Inlet temperature [K]
+            q_flux_profile: Optional[Callable[[float], float]] = None,  # q"(x) [W/m²]
+            h_gas_profile: Optional[Callable[[float], float]] = None,   # h_gas(x) [W/m²-K]
+            T_gas_profile: Optional[Callable[[float], float]] = None,   # T_gas(x) [K]
+            m_dot: float = 0.0,  # Total mass flow [kg/s]
+            P_inlet: float = 50e5,  # Inlet pressure [Pa]
+            T_inlet: float = 290.0,  # Inlet temperature [K]
             x_start: float = 0.0,  # Start position [m]
             x_end: float = 0.1,  # End position [m]
             n_stations: int = 100,  # Number of stations
@@ -819,9 +822,25 @@ class N2OCoolingSolver:
             flow_direction: str = "counter",  # "counter" or "co"
             engine_name: str = "Engine"
     ):
+        # Validate: need exactly one heat source specification
+        has_q_profile = q_flux_profile is not None
+        has_coupled = h_gas_profile is not None and T_gas_profile is not None
+        if not has_q_profile and not has_coupled:
+            raise ValueError(
+                "N2OCoolingSolver requires either q_flux_profile or both "
+                "h_gas_profile and T_gas_profile."
+            )
+        if has_q_profile and has_coupled:
+            raise ValueError(
+                "Provide either q_flux_profile or h_gas_profile+T_gas_profile, not both."
+            )
+
         self.contour = contour
         self.channel_geom = channel_geom
         self.q_flux_profile = q_flux_profile
+        self.h_gas_profile = h_gas_profile
+        self.T_gas_profile = T_gas_profile
+        self._coupled_mode = has_coupled
         self.m_dot = m_dot
         self.P_inlet = P_inlet
         self.T_inlet = T_inlet
@@ -875,9 +894,6 @@ class N2OCoolingSolver:
             # Mass flux
             G = self.m_dot_channel / A_flow
 
-            # Get heat flux
-            q_flux = self.q_flux_profile(x)
-
             # Get current fluid state
             try:
                 state = get_n2o_state(P, h=h)
@@ -888,17 +904,57 @@ class N2OCoolingSolver:
             # Reynolds number
             Re = G * D_h / state.mu
 
-            # Determine regime and calculate heat transfer
-            flow_regime, boiling_regime, h_conv, q_chf, station_warnings = \
-                self._calculate_station_heat_transfer(state, G, D_h, q_flux, P)
+            if self._coupled_mode:
+                # --- Coupled gas/coolant heat balance ---
+                # Iterate on q_flux and h_conv together (typically converges in 3-5 steps)
+                h_g = self.h_gas_profile(x)
+                T_g = self.T_gas_profile(x)
+                t_w = self.channel_geom.wall_thickness
+                k_w = self.channel_geom.k_wall
+
+                # Initial estimate: assume half the available temperature driving force
+                q_flux_est = max(h_g * (T_g - state.T) * 0.5, 0.0)
+
+                h_conv_iter = 5000.0  # starting h_conv guess [W/m²-K]
+                for _inner in range(10):
+                    # Coupled formula: q = ΔT / (1/h_gas + t_wall/k_wall + 1/h_conv)
+                    denom = 1.0 / max(h_g, 1.0) + t_w / max(k_w, 0.1) + 1.0 / max(h_conv_iter, 50)
+                    q_flux_new = max((T_g - state.T) / denom, 0.0)
+
+                    # Update h_conv with phase-aware correlation at new q estimate
+                    _, _, h_conv_new, _, _ = self._calculate_station_heat_transfer(
+                        state, G, D_h, q_flux_new, P)
+                    h_conv_iter = h_conv_new
+
+                    rel_err = abs(q_flux_new - q_flux_est) / max(abs(q_flux_est), 1.0)
+                    q_flux_est = q_flux_new
+                    if rel_err < 1e-3:
+                        break
+
+                q_flux = q_flux_est
+                # Derive wall temps from coupled solution
+                T_wall_hot = T_g - q_flux / max(h_g, 1.0)
+                T_wall_cold = T_wall_hot - q_flux * t_w / max(k_w, 0.1)
+
+                # Compute flow regime and CHF using converged q_flux
+                flow_regime, boiling_regime, h_conv, q_chf, station_warnings = \
+                    self._calculate_station_heat_transfer(state, G, D_h, q_flux, P)
+
+            else:
+                # --- Pre-computed q_flux mode (original behaviour) ---
+                q_flux = self.q_flux_profile(x)
+
+                # Determine regime and calculate heat transfer
+                flow_regime, boiling_regime, h_conv, q_chf, station_warnings = \
+                    self._calculate_station_heat_transfer(state, G, D_h, q_flux, P)
+
+                # Calculate wall temperatures
+                T_wall_cold = state.T + q_flux / max(h_conv, 100)
+                T_wall_hot = T_wall_cold + q_flux * self.channel_geom.wall_thickness / \
+                             self.channel_geom.k_wall
 
             warnings.extend([f"x={x:.4f}m: {w}" for w in station_warnings])
             regimes_seen.add(flow_regime)
-
-            # Calculate wall temperatures
-            T_wall_cold = state.T + q_flux / max(h_conv, 100)
-            T_wall_hot = T_wall_cold + q_flux * self.channel_geom.wall_thickness / \
-                         self.channel_geom.k_wall
 
             # CHF margin
             chf_margin = q_flux / q_chf if q_chf > 0 else 0
@@ -1319,75 +1375,144 @@ def create_cooling_solver_from_resa_config(
 # VISUALIZATION (requires plotly)
 # =============================================================================
 
-def plot_cooling_results(result: CoolingAnalysisResult):
-    """Create comprehensive visualization of cooling analysis results."""
+def plot_cooling_results(result: CoolingAnalysisResult, theme=None):
+    """Create comprehensive visualization of N2O cooling analysis results.
+
+    Args:
+        result: CoolingAnalysisResult from N2OCoolingSolver.solve()
+        theme: PlotTheme instance for styling. Defaults to DEFAULT_THEME.
+
+    Returns:
+        Plotly Figure with 6 subplots.
+    """
     try:
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
     except ImportError:
         raise RuntimeError("Plotly required for visualization")
 
+    if theme is None:
+        try:
+            from resa.visualization.themes import DEFAULT_THEME
+            theme = DEFAULT_THEME
+        except ImportError:
+            theme = None
+
     x = [s.x * 1000 for s in result.stations]
 
     fig = make_subplots(
         rows=3, cols=2,
         subplot_titles=(
-            "Temperature Profile", "Pressure Drop",
-            "Heat Transfer Coefficient", "CHF Margin",
-            "Flow Regime", "Quality Profile"
+            "Temperature Profile [°C]", "Coolant Pressure [bar]",
+            "Heat Transfer Coefficient [kW/m²-K]", "CHF Safety Margin [-]",
+            "Flow Regime", "Vapor Quality [-]"
         ),
-        vertical_spacing=0.1
+        vertical_spacing=0.1,
+        horizontal_spacing=0.12,
     )
 
-    # Temperature
+    # Determine colors from theme or fallback
+    c_coolant = theme.primary if theme else '#1f77b4'
+    c_wall = theme.danger if theme else '#d62728'
+    c_pressure = theme.purple if theme else '#9b59b6'
+    c_htc = theme.accent if theme else '#2ca02c'
+    c_quality = theme.secondary if theme else '#ff7f0e'
+
+    # 1. Temperature Profile
     fig.add_trace(go.Scatter(
         x=x, y=[s.fluid.T - 273.15 for s in result.stations],
-        name='T_coolant', line=dict(color='blue')
+        name='T_coolant', line=dict(color=c_coolant, width=2),
+        hovertemplate="x=%{x:.1f} mm<br>T=%{y:.1f} °C<extra></extra>",
     ), row=1, col=1)
     fig.add_trace(go.Scatter(
         x=x, y=[s.T_wall_hot - 273.15 for s in result.stations],
-        name='T_wall_hot', line=dict(color='red')
+        name='T_wall_hot', line=dict(color=c_wall, width=2),
+        hovertemplate="x=%{x:.1f} mm<br>T_wall=%{y:.1f} °C<extra></extra>",
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=x, y=[s.T_wall_cold - 273.15 for s in result.stations],
+        name='T_wall_cold', line=dict(color=c_wall, width=1.5, dash='dash'),
+        hovertemplate="x=%{x:.1f} mm<br>T_wall_cold=%{y:.1f} °C<extra></extra>",
     ), row=1, col=1)
 
-    # Pressure
+    # 2. Pressure
     fig.add_trace(go.Scatter(
         x=x, y=[s.fluid.P / 1e5 for s in result.stations],
-        name='Pressure', line=dict(color='purple')
+        name='Pressure', line=dict(color=c_pressure, width=2),
+        hovertemplate="x=%{x:.1f} mm<br>P=%{y:.2f} bar<extra></extra>",
     ), row=1, col=2)
 
-    # HTC
+    # 3. HTC
     fig.add_trace(go.Scatter(
         x=x, y=[s.h_conv / 1000 for s in result.stations],
-        name='h_conv', line=dict(color='green')
+        name='h_conv', line=dict(color=c_htc, width=2),
+        hovertemplate="x=%{x:.1f} mm<br>h=%{y:.2f} kW/m²-K<extra></extra>",
     ), row=2, col=1)
 
-    # CHF Margin
+    # 4. CHF Margin
     fig.add_trace(go.Scatter(
         x=x, y=[s.chf_margin for s in result.stations],
-        name='q/q_CHF', line=dict(color='red')
+        name='q/q_CHF', line=dict(color=c_wall, width=2),
+        hovertemplate="x=%{x:.1f} mm<br>q/q_CHF=%{y:.3f}<extra></extra>",
     ), row=2, col=2)
-    fig.add_hline(y=0.5, line_dash="dash", line_color="red",
-                  row=2, col=2, annotation_text="Safety Limit")
+    fig.add_hline(
+        y=0.5, line_dash="dash", line_color=c_wall,
+        row=2, col=2, annotation_text="Safety Limit (0.5)",
+        annotation_font_color=c_wall,
+    )
 
-    # Flow regime
-    regime_map = {r: i for i, r in enumerate(FlowRegime)}
+    # 5. Flow regime (integer coding + colorscale)
+    regime_list = list(FlowRegime)
+    regime_map = {r: i for i, r in enumerate(regime_list)}
+    regime_labels = [s.flow_regime.value for s in result.stations]
+    regime_ints = [regime_map[s.flow_regime] for s in result.stations]
     fig.add_trace(go.Scatter(
-        x=x, y=[regime_map[s.flow_regime] for s in result.stations],
-        mode='markers', name='Regime',
-        marker=dict(color=[regime_map[s.flow_regime] for s in result.stations],
-                    colorscale='Viridis')
+        x=x, y=regime_ints,
+        mode='markers+lines', name='Flow Regime',
+        text=regime_labels,
+        hovertemplate="x=%{x:.1f} mm<br>%{text}<extra></extra>",
+        marker=dict(
+            color=regime_ints,
+            colorscale='Plasma',
+            size=5,
+            showscale=False,
+        ),
+        line=dict(width=1, color='rgba(128,128,128,0.3)'),
     ), row=3, col=1)
+    # Y-axis tick labels for regimes
+    fig.update_yaxes(
+        tickvals=list(range(len(regime_list))),
+        ticktext=[r.value for r in regime_list],
+        tickfont=dict(size=8),
+        row=3, col=1,
+    )
 
-    # Quality
+    # 6. Vapor Quality
     fig.add_trace(go.Scatter(
         x=x, y=[s.fluid.quality or 0 for s in result.stations],
-        name='Quality', line=dict(color='orange')
+        name='Vapor Quality', line=dict(color=c_quality, width=2),
+        hovertemplate="x=%{x:.1f} mm<br>x_vap=%{y:.4f}<extra></extra>",
+        fill='tozeroy', fillcolor=f"rgba({int(c_quality[1:3],16)},{int(c_quality[3:5],16)},{int(c_quality[5:7],16)},0.15)"
+        if c_quality.startswith('#') and len(c_quality) == 7 else None,
     ), row=3, col=2)
+    fig.add_hline(
+        y=1.0, line_dash="dot",
+        line_color='rgba(180,180,180,0.5)',
+        row=3, col=2,
+    )
+
+    # Shared x-axis labels
+    for col in (1, 2):
+        fig.update_xaxes(title_text="Axial Position [mm]", row=3, col=col)
 
     fig.update_layout(
-        title=f"N2O Cooling Analysis: {result.engine_name}",
-        height=900, width=1100
+        title=dict(text=f"N2O Cooling Analysis — {result.engine_name}", x=0.5),
+        height=900,
+        showlegend=True,
     )
+
+    if theme is not None:
+        theme.apply_to_figure(fig)
 
     return fig
 
@@ -1464,6 +1589,6 @@ if __name__ == "__main__":
             print(f"  - {w}")
 
     if result.errors:
-        print(f"\nERRORS:")
+        print("\nERRORS:")
         for e in result.errors:
             print(f"  - {e}")

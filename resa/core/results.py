@@ -3,10 +3,10 @@ Result dataclasses for RESA.
 All analysis results are immutable dataclasses with clear structure.
 """
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any
-import numpy as np
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+import numpy as np
 
 # =============================================================================
 # COMBUSTION RESULTS
@@ -24,7 +24,7 @@ class CombustionResult:
     gamma: float            # Specific heat ratio
     mw: float               # Molecular weight [kg/kmol]
     mach_exit: float        # Exit Mach number
-    
+
     @property
     def R_specific(self) -> float:
         """Specific gas constant [J/(kg·K)]."""
@@ -112,9 +112,18 @@ class CoolingResult:
     pressure_drop: float = 0.0      # Total pressure drop [bar]
     outlet_temp: float = 0.0        # Coolant outlet temperature [K]
 
+    # Extended N2O fields — None for non-N2O solvers
+    density: Optional[np.ndarray] = None        # Coolant density [kg/m³]
+    h_conv: Optional[np.ndarray] = None         # Coolant-side HTC [W/m²-K]
+    chf_margin: Optional[np.ndarray] = None     # q_flux / q_CHF [-] (< 0.5 = safe)
+    quality: Optional[np.ndarray] = None        # Vapor quality [0-1]
+    flow_regime: Optional[List[str]] = None     # FlowRegime.value per station
+    min_chf_margin: Optional[float] = None      # Worst-case CHF margin
+    max_quality: Optional[float] = None         # Maximum vapor quality reached
+
     def to_dict(self) -> Dict[str, np.ndarray]:
         """Convert to dictionary for legacy compatibility."""
-        return {
+        d = {
             'T_coolant': self.T_coolant,
             'P_coolant': self.P_coolant,
             'T_wall_hot': self.T_wall_hot,
@@ -122,6 +131,9 @@ class CoolingResult:
             'q_flux': self.q_flux,
             'velocity': self.velocity,
         }
+        if self.density is not None:
+            d['density'] = self.density
+        return d
 
 
 @dataclass
@@ -130,11 +142,11 @@ class EngineDesignResult:
     # Identification
     timestamp: datetime = field(default_factory=datetime.now)
     run_type: str = "design"  # "design", "off_design", "throttle"
-    
+
     # Operating Point
     pc_bar: float = 0.0
     mr: float = 0.0
-    
+
     # Performance
     isp_vac: float = 0.0
     isp_sea: float = 0.0
@@ -143,46 +155,46 @@ class EngineDesignResult:
     massflow_total: float = 0.0
     massflow_ox: float = 0.0
     massflow_fuel: float = 0.0
-    
+
     # Key Dimensions
     dt_mm: float = 0.0
     de_mm: float = 0.0
     length_mm: float = 0.0
     expansion_ratio: float = 0.0
-    
+
     # Combustion Data
     combustion: Optional[CombustionResult] = None
-    
+
     # Geometry
     nozzle_geometry: Optional[NozzleGeometry] = None
     channel_geometry: Optional[CoolingChannelGeometry] = None
-    
+
     # Thermal Analysis
     cooling: Optional[CoolingResult] = None
-    
+
     # Gas Dynamics (1D arrays along nozzle)
     mach_numbers: Optional[np.ndarray] = None
     T_gas_recovery: Optional[np.ndarray] = None
     h_gas: Optional[np.ndarray] = None
-    
+
     # Warnings/Notes
     warnings: List[str] = field(default_factory=list)
-    
+
     @property
     def cooling_data(self) -> Dict[str, np.ndarray]:
         """Legacy compatibility for cooling_data dict."""
         if self.cooling:
             return self.cooling.to_dict()
         return {}
-    
+
     @property
     def geometry(self):
         """Legacy compatibility."""
         return self.nozzle_geometry
-    
+
     def add_warning(self, msg: str):
         self.warnings.append(msg)
-    
+
     def summary_dict(self) -> Dict[str, Any]:
         """Return key metrics as dictionary for display."""
         return {
@@ -213,17 +225,17 @@ class InjectorGeometryResult:
     num_inlet_ports: int
     chamber_length_mm: float
     orifice_length_mm: float
-    
+
     # Performance Estimates
     discharge_coefficient: float
     spray_half_angle_deg: float
     film_thickness_mm: float
     swirl_number: float
-    
+
     # For Coaxial Injectors
     oxidizer_annulus_od_mm: Optional[float] = None
     oxidizer_annulus_id_mm: Optional[float] = None
-    
+
     @property
     def orifice_area_mm2(self) -> float:
         return np.pi * (self.orifice_diameter_mm / 2) ** 2
@@ -253,7 +265,7 @@ class ThrottlePoint:
     thrust_n: float
     isp_s: float
     max_wall_temp_k: float
-    
+
     def to_dict(self) -> Dict[str, float]:
         return {
             'throttle_pct': self.throttle_pct,
@@ -271,19 +283,19 @@ class ThrottleCurve:
     points: List[ThrottlePoint]
     throttle_mode: str  # "ox_only", "both", "fuel_only"
     fuel_control: str   # "venturi", "orifice"
-    
+
     def to_dataframe(self):
         import pandas as pd
         return pd.DataFrame([p.to_dict() for p in self.points])
-    
+
     @property
     def min_thrust(self) -> float:
         return min(p.thrust_n for p in self.points)
-    
+
     @property
     def max_thrust(self) -> float:
         return max(p.thrust_n for p in self.points)
-    
+
     @property
     def throttle_ratio(self) -> float:
         return self.max_thrust / self.min_thrust if self.min_thrust > 0 else float('inf')

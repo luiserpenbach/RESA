@@ -20,6 +20,40 @@ from resa.core.results import EngineDesignResult
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Coolant detection helpers
+# ---------------------------------------------------------------------------
+
+def _is_n2o_coolant(coolant_name: str) -> bool:
+    """Return True if the coolant is Nitrous Oxide (N2O)."""
+    name = coolant_name.lower().replace(" ", "").replace("::", "")
+    return "n2o" in name or "nitrousoxide" in name
+
+
+def _resolve_coolant_name(coolant_name: str) -> str:
+    """Map a RESA coolant name to a CoolProp-compatible fluid identifier."""
+    name_lower = coolant_name.lower().replace(" ", "").replace("::", "")
+    # N2O handled by N2OCoolingAdapter; listed here only for completeness
+    if "n2o" in name_lower or "nitrousoxide" in name_lower:
+        return "NitrousOxide"
+    if "ethanol" in name_lower:
+        return "Ethanol"
+    if "methanol" in name_lower:
+        return "Methanol"
+    if "isopropanol" in name_lower or "ipa" in name_lower:
+        return "1-Propanol"
+    if "kerosene" in name_lower or "rp1" in name_lower or "rp-1" in name_lower:
+        return "n-Dodecane"  # CoolProp approximation for kerosene
+    if "methane" in name_lower or "ch4" in name_lower:
+        return "Methane"
+    if "hydrogen" in name_lower or "lh2" in name_lower:
+        return "Hydrogen"
+    if "water" in name_lower or "h2o" in name_lower:
+        return "Water"
+    # Fall back to the raw name and let CoolProp error if unsupported
+    return coolant_name
+
+
 # Module dependency graph
 MODULE_DEPENDENCIES = {
     "engine": [],
@@ -154,7 +188,11 @@ class DesignSession:
         return geom
 
     def run_cooling_analysis(self):
-        """Run thermal-hydraulic cooling analysis using current channel geometry."""
+        """Run thermal-hydraulic cooling analysis using current channel geometry.
+
+        Routes to N2OCoolingAdapter for N2O coolants (phase-aware physics with CHF tracking)
+        or RegenCoolingSolver for other fluids.
+        """
         self._check_dependencies("cooling")
         engine_result = self._results["engine"]
 
@@ -164,8 +202,6 @@ class DesignSession:
 
         if channel_geom is None:
             raise ValueError("No cooling channel geometry available. Run cooling_channels first.")
-
-        from resa.solvers.cooling import RegenCoolingSolver
 
         # Resolve coolant overrides from channel config if available
         ch_cfg = self._module_configs.get("cooling_channels")
@@ -185,18 +221,34 @@ class DesignSession:
             else self.config.coolant_mass_fraction
         )
 
-        solver = RegenCoolingSolver(wall_conductivity=self.config.wall_conductivity)
         mdot_coolant = engine_result.massflow_fuel * mass_fraction
 
-        cooling_result = solver.solve(
-            mdot_coolant=mdot_coolant,
-            p_in=p_in,
-            t_in=t_in,
-            geometry=channel_geom,
-            T_gas=engine_result.T_gas_recovery,
-            h_gas=engine_result.h_gas,
-            mode=self.config.cooling_mode,
-        )
+        if _is_n2o_coolant(self.config.coolant_name):
+            from resa.solvers.cooling import N2OCoolingAdapter
+            solver = N2OCoolingAdapter(wall_conductivity=self.config.wall_conductivity)
+            cooling_result = solver.solve(
+                mdot_coolant=mdot_coolant,
+                p_in=p_in,
+                t_in=t_in,
+                geometry=channel_geom,
+                T_gas=engine_result.T_gas_recovery,
+                h_gas=engine_result.h_gas,
+                mode=self.config.cooling_mode,
+            )
+        else:
+            from resa.solvers.cooling import RegenCoolingSolver
+            fluid_name = _resolve_coolant_name(self.config.coolant_name)
+            solver = RegenCoolingSolver(wall_conductivity=self.config.wall_conductivity)
+            cooling_result = solver.solve(
+                mdot_coolant=mdot_coolant,
+                p_in=p_in,
+                t_in=t_in,
+                geometry=channel_geom,
+                T_gas=engine_result.T_gas_recovery,
+                h_gas=engine_result.h_gas,
+                mode=self.config.cooling_mode,
+                fluid_name=fluid_name,
+            )
 
         self._invalidate_downstream("cooling")
         self._results["cooling"] = cooling_result
