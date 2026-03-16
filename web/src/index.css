@@ -300,7 +300,7 @@ body {
 /* ─── App Shell (3-panel grid) ───────────────────────────────────────── */
 .app-shell {
   display: grid;
-  grid-template-rows: var(--topbar-height) 1fr var(--statusbar-height);
+  grid-template-rows: var(--topbar-height) 1fr 0px var(--statusbar-height);
   grid-template-columns: var(--panel-left) 1fr var(--panel-right);
   flex: 1;
   min-width: 0;
@@ -322,7 +322,7 @@ body {
 
 .app-statusbar {
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 4;
   display: flex;
   align-items: stretch;
   background: var(--bg-elevated);
@@ -574,6 +574,188 @@ body {
 }
 
 .statusbar-spacer { flex: 1; }
+
+.statusbar-methods-btn {
+  gap: 5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: all 120ms;
+  border-right: none;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.statusbar-methods-btn.active {
+  color: var(--accent-bright);
+  background: var(--accent-dim);
+}
+
+/* ─── Methods Panel ──────────────────────────────────────────────────── */
+.app-methods-panel {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.methods-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 28px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.methods-panel-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.methods-panel-spacer { flex: 1; }
+
+.methods-panel-ref {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 600px;
+}
+
+.methods-panel-close {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.methods-panel-body {
+  display: flex;
+  gap: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 10px 14px;
+  gap: 24px;
+}
+
+.methods-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.methods-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  margin-bottom: 5px;
+}
+
+.methods-section-lines {
+  margin: 0;
+  padding: 0 0 0 14px;
+  list-style: none;
+}
+
+.methods-section-lines li {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  padding: 0;
+  position: relative;
+}
+
+.methods-section-lines li::before {
+  content: "—";
+  position: absolute;
+  left: -14px;
+  color: var(--text-muted);
+}
+
+/* ─── Parameter Help Tooltip ─────────────────────────────────────────── */
+.param-label {
+  position: relative;
+}
+
+.param-label-text {
+  vertical-align: middle;
+}
+
+.param-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color 120ms;
+  border-radius: 50%;
+  outline: none;
+}
+
+.param-help-icon:hover,
+.param-help-icon:focus {
+  color: var(--accent-bright);
+}
+
+.param-tooltip-content {
+  max-width: 280px;
+  padding: 2px 0;
+}
+
+.param-tooltip-desc {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 5px;
+}
+
+.param-tooltip-range {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.param-tooltip-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  margin-right: 6px;
+}
+
+.param-tooltip-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 4px;
+  margin-top: 2px;
+  font-style: italic;
+}
 
 /* ─── Panel Sections ─────────────────────────────────────────────────── */
 .panel-section {

@@ -5,8 +5,10 @@ import {
   HTMLSelect,
   Switch,
   Slider,
+  Tooltip,
 } from "@blueprintjs/core";
 import type { ReactNode } from "react";
+import { PARAM_DOCS } from "../../data/paramDocs";
 
 import { ValidationBanner } from "../metrics/ValidationBanner";
 import { useValidateMutation } from "../../api/engine";
@@ -48,10 +50,44 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-function ParamRow({ label, children }: { label: string; children: ReactNode }) {
+function ParamRow({
+  label,
+  paramKey,
+  children,
+}: {
+  label: string;
+  paramKey?: string;
+  children: ReactNode;
+}) {
+  const doc = paramKey ? PARAM_DOCS[paramKey] : undefined;
+
   return (
     <tr>
-      <td className="param-label">{label}</td>
+      <td className="param-label">
+        <span className="param-label-text">{label}</span>
+        {doc && (
+          <Tooltip
+            content={
+              <div className="param-tooltip-content">
+                <div className="param-tooltip-desc">{doc.description}</div>
+                {doc.range && (
+                  <div className="param-tooltip-range">
+                    <span className="param-tooltip-tag">Range</span>
+                    {doc.range}
+                  </div>
+                )}
+                {doc.note && (
+                  <div className="param-tooltip-note">{doc.note}</div>
+                )}
+              </div>
+            }
+            placement="right"
+            compact
+          >
+            <span className="param-help-icon" tabIndex={0}>ⓘ</span>
+          </Tooltip>
+        )}
+      </td>
       <td className="param-value">{children}</td>
     </tr>
   );
@@ -150,14 +186,14 @@ export function EngineConfigForm({
               {OXIDIZERS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </ParamRow>
-          <ParamRow label="Fuel Inj. Temp [K]">
+          <ParamRow label="Fuel Inj. Temp [K]" paramKey="fuel_injection_temp_k">
             <NumericInput
               value={localConfig.fuel_injection_temp_k}
               onValueChange={(v) => updateField("fuel_injection_temp_k", v)}
               min={100} max={500} stepSize={1} fill
             />
           </ParamRow>
-          <ParamRow label="Ox. Inj. Temp [K]">
+          <ParamRow label="Ox. Inj. Temp [K]" paramKey="oxidizer_injection_temp_k">
             <NumericInput
               value={localConfig.oxidizer_injection_temp_k}
               onValueChange={(v) => updateField("oxidizer_injection_temp_k", v)}
@@ -171,42 +207,42 @@ export function EngineConfigForm({
       <SectionHeader>Performance Targets</SectionHeader>
       <table className="param-table">
         <tbody>
-          <ParamRow label="Thrust [N]">
+          <ParamRow label="Thrust [N]" paramKey="thrust_n">
             <NumericInput
               value={localConfig.thrust_n}
               onValueChange={(v) => updateField("thrust_n", v)}
               min={1} stepSize={100} fill
             />
           </ParamRow>
-          <ParamRow label="Chamber Pressure [bar]">
+          <ParamRow label="Chamber Pressure [bar]" paramKey="pc_bar">
             <NumericInput
               value={localConfig.pc_bar}
               onValueChange={(v) => updateField("pc_bar", v)}
               min={1} max={300} stepSize={1} fill
             />
           </ParamRow>
-          <ParamRow label="Mixture Ratio [O/F]">
+          <ParamRow label="Mixture Ratio [O/F]" paramKey="mr">
             <NumericInput
               value={localConfig.mr}
               onValueChange={(v) => updateField("mr", v)}
               min={0.5} max={15} stepSize={0.1} minorStepSize={0.01} fill
             />
           </ParamRow>
-          <ParamRow label="Combustion Efficiency">
+          <ParamRow label="Combustion Efficiency" paramKey="eff_combustion">
             <NumericInput
               value={localConfig.eff_combustion}
               onValueChange={(v) => updateField("eff_combustion", v)}
               min={0.5} max={1.0} stepSize={0.01} minorStepSize={0.001} fill
             />
           </ParamRow>
-          <ParamRow label="Nozzle Div. Efficiency">
+          <ParamRow label="Nozzle Div. Efficiency" paramKey="eff_nozzle_divergence">
             <NumericInput
               value={localConfig.eff_nozzle_divergence}
               onValueChange={(v) => updateField("eff_nozzle_divergence", v)}
               min={0.8} max={1.0} stepSize={0.001} minorStepSize={0.001} fill
             />
           </ParamRow>
-          <ParamRow label="Freeze at Throat">
+          <ParamRow label="Freeze at Throat" paramKey="freeze_at_throat">
             <Switch
               checked={localConfig.freeze_at_throat}
               onChange={(e) => updateField("freeze_at_throat", e.target.checked)}
@@ -230,49 +266,49 @@ export function EngineConfigForm({
               fill
             />
           </ParamRow>
-          <ParamRow label="Expansion Ratio">
+          <ParamRow label="Expansion Ratio" paramKey="expansion_ratio">
             <NumericInput
               value={localConfig.expansion_ratio}
               onValueChange={(v) => updateField("expansion_ratio", v)}
               min={0} stepSize={0.1} fill
             />
           </ParamRow>
-          <ParamRow label="Exit Pressure [bar]">
+          <ParamRow label="Exit Pressure [bar]" paramKey="p_exit_bar">
             <NumericInput
               value={localConfig.p_exit_bar}
               onValueChange={(v) => updateField("p_exit_bar", v)}
               min={0.01} stepSize={0.1} fill
             />
           </ParamRow>
-          <ParamRow label="L* [mm]">
+          <ParamRow label="L* [mm]" paramKey="L_star">
             <NumericInput
               value={localConfig.L_star}
               onValueChange={(v) => updateField("L_star", v)}
               min={200} max={3000} stepSize={50} fill
             />
           </ParamRow>
-          <ParamRow label="Contraction Ratio">
+          <ParamRow label="Contraction Ratio" paramKey="contraction_ratio">
             <NumericInput
               value={localConfig.contraction_ratio}
               onValueChange={(v) => updateField("contraction_ratio", v)}
               min={2} max={20} stepSize={0.5} fill
             />
           </ParamRow>
-          <ParamRow label="Convergent Angle [deg]">
+          <ParamRow label="Convergent Angle [deg]" paramKey="theta_convergent">
             <NumericInput
               value={localConfig.theta_convergent}
               onValueChange={(v) => updateField("theta_convergent", v)}
               min={15} max={60} stepSize={1} fill
             />
           </ParamRow>
-          <ParamRow label="Exit Half-Angle [deg]">
+          <ParamRow label="Exit Half-Angle [deg]" paramKey="theta_exit">
             <NumericInput
               value={localConfig.theta_exit}
               onValueChange={(v) => updateField("theta_exit", v)}
               min={5} max={30} stepSize={1} fill
             />
           </ParamRow>
-          <ParamRow label="Bell Fraction">
+          <ParamRow label="Bell Fraction" paramKey="bell_fraction">
             <div style={{ padding: "6px 0 2px" }}>
               <Slider
                 value={localConfig.bell_fraction}
