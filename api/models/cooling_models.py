@@ -3,7 +3,7 @@ Pydantic models for cooling design API.
 """
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -87,12 +87,26 @@ class CoolingAnalysisResponse(BaseModel):
     figure_thermal: Optional[str] = None
 
     # Profile arrays
-    x_mm: list[float]
-    t_wall_hot_k: list[float]
-    t_wall_cold_k: list[float]
-    t_coolant_k: list[float]
-    q_flux_mw_m2: list[float]
-    coolant_velocity_m_s: list[float]
-    coolant_pressure_bar: list[float]
+    x_mm: List[float]
+    t_wall_hot_k: List[float]
+    t_wall_cold_k: List[float]
+    t_coolant_k: List[float]
+    q_flux_mw_m2: List[float]
+    coolant_velocity_m_s: List[float]
+    coolant_pressure_bar: List[float]
 
-    warnings: list[str] = []
+    warnings: List[str] = []
+
+    # --- N2O-specific extended fields (None when coolant is not N2O) ---
+    is_n2o_analysis: bool = False
+    min_chf_margin: Optional[float] = None
+    max_quality: Optional[float] = None
+    # Per-station arrays
+    chf_margin: Optional[List[float]] = None
+    vapor_quality: Optional[List[float]] = None
+    flow_regime: Optional[List[str]] = None
+    h_conv_kw_m2k: Optional[List[float]] = None
+    density_kg_m3: Optional[List[float]] = None
+    # Phase diagram figures
+    figure_t_rho: Optional[str] = None
+    figure_p_t: Optional[str] = None

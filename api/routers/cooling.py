@@ -136,6 +136,23 @@ async def analyze_cooling(
     except Exception:
         logger.warning("Could not generate thermal figure", exc_info=True)
 
+    # Generate N2O phase diagram figures (only when density data is available)
+    figure_t_rho = None
+    figure_p_t = None
+    is_n2o = result.density is not None
+    if is_n2o:
+        try:
+            from resa.visualization.cooling_plots import CoolingPhaseDiagramPlotter
+            from resa.visualization.themes import DarkTheme
+
+            phase_plotter = CoolingPhaseDiagramPlotter(theme=DarkTheme())
+            fig_t_rho = phase_plotter.create_t_rho_figure(result)
+            figure_t_rho = fig_t_rho.to_json()
+            fig_p_t = phase_plotter.create_p_t_figure(result)
+            figure_p_t = fig_p_t.to_json()
+        except Exception:
+            logger.warning("Could not generate N2O phase diagram figures", exc_info=True)
+
     nozzle = session.engine_result.nozzle_geometry if session.engine_result else None
     x_mm = (nozzle.x_full * 1e3).tolist() if nozzle is not None else []
 
@@ -144,6 +161,13 @@ async def analyze_cooling(
         warnings.append(
             f"Max wall temperature {result.max_wall_temp:.0f} K exceeds 900 K"
         )
+    if is_n2o and result.min_chf_margin is not None and result.min_chf_margin > 0.5:
+        warnings.append(
+            f"CHF margin exceeded at worst station (q/q_CHF = {result.min_chf_margin:.2f}). "
+            "Risk of wall burnout."
+        )
+    if is_n2o and result.flow_regime is not None and "post_chf" in result.flow_regime:
+        warnings.append("POST-CHF condition detected — film boiling likely. Redesign required.")
 
     return CoolingAnalysisResponse(
         max_wall_temp_k=result.max_wall_temp,
@@ -159,6 +183,17 @@ async def analyze_cooling(
         coolant_velocity_m_s=result.velocity.tolist(),
         coolant_pressure_bar=(result.P_coolant / 1e5).tolist(),
         warnings=warnings,
+        # N2O-specific
+        is_n2o_analysis=is_n2o,
+        min_chf_margin=result.min_chf_margin,
+        max_quality=result.max_quality,
+        chf_margin=result.chf_margin.tolist() if result.chf_margin is not None else None,
+        vapor_quality=result.quality.tolist() if result.quality is not None else None,
+        flow_regime=result.flow_regime,
+        h_conv_kw_m2k=(result.h_conv / 1e3).tolist() if result.h_conv is not None else None,
+        density_kg_m3=result.density.tolist() if result.density is not None else None,
+        figure_t_rho=figure_t_rho,
+        figure_p_t=figure_p_t,
     )
 
 

@@ -453,7 +453,12 @@ function CoolingWorkspace({
   activeTab: string;
   onTabChange: (tab: string) => void;
 }) {
-  const tabs = ["channels", "cross-section", "3d-view", "thermal"];
+  const baseTabsAlways = ["channels", "cross-section", "3d-view", "thermal"];
+  const n2oTabs =
+    analysisResult?.is_n2o_analysis
+      ? ["t-rho", "p-t"]
+      : [];
+  const tabs = [...baseTabsAlways, ...n2oTabs];
 
   // Build a Plotly figure JSON for the channel profile from the response arrays.
   const channelFigureJson = useMemo(() => {
@@ -525,6 +530,10 @@ function CoolingWorkspace({
         return "3D View";
       case "thermal":
         return "Thermal Dashboard";
+      case "t-rho":
+        return "T-ρ Diagram";
+      case "p-t":
+        return "P-T Diagram";
       default:
         return tab;
     }
@@ -567,6 +576,14 @@ function CoolingWorkspace({
 
         {activeTab === "thermal" && analysisResult && (
           <PlotlyRenderer figureJson={analysisResult.figure_thermal} height={500} />
+        )}
+
+        {activeTab === "t-rho" && analysisResult && (
+          <PlotlyRenderer figureJson={analysisResult.figure_t_rho} height={500} />
+        )}
+
+        {activeTab === "p-t" && analysisResult && (
+          <PlotlyRenderer figureJson={analysisResult.figure_p_t} height={500} />
         )}
 
         {!channelResult && !analysisResult && activeTab !== "cross-section" && (
@@ -674,6 +691,37 @@ function CoolingMetrics({
             label="Outlet Temp"
             value={`${analysisResult.outlet_temp_k.toFixed(1)} K`}
           />
+
+          {analysisResult.is_n2o_analysis && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "var(--text-muted)",
+                  marginBottom: 4,
+                }}
+              >
+                N₂O Two-Phase
+              </div>
+              {analysisResult.min_chf_margin != null && (
+                <MetricRow
+                  label="Min CHF Margin"
+                  value={analysisResult.min_chf_margin.toFixed(3)}
+                  warn={analysisResult.min_chf_margin > 0.5}
+                />
+              )}
+              {analysisResult.max_quality != null && (
+                <MetricRow
+                  label="Max Quality"
+                  value={analysisResult.max_quality.toFixed(4)}
+                  warn={analysisResult.max_quality > 0.3}
+                />
+              )}
+            </div>
+          )}
 
           {analysisResult.warnings.length > 0 && (
             <div style={{ marginTop: 8 }}>

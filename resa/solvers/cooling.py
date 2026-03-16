@@ -1,10 +1,11 @@
 """Regenerative Cooling Solver for RESA."""
-import numpy as np
-import CoolProp.CoolProp as CP
-from scipy.optimize import root_scalar
-from typing import Literal, Dict, Any
+from typing import Literal, Optional
 
-from resa.core.results import CoolingResult, CoolingChannelGeometry
+import CoolProp.CoolProp as CP
+import numpy as np
+from scipy.optimize import root_scalar
+
+from resa.core.results import CoolingChannelGeometry, CoolingResult
 
 
 class RegenCoolingSolver:
@@ -219,3 +220,159 @@ class RegenCoolingSolver:
 
         inv_sqrt_f = a * (np.log(d / q) + delta_cfa)
         return (1.0 / inv_sqrt_f) ** 2
+
+
+class N2OCoolingAdapter:
+    """
+    Adapter that runs the physics-rich N2OCoolingSolver with RESA's standard solver interface.
+
+    Bridges:
+    - Array-based CoolingChannelGeometry (resa.core.results) → callable-based geometry
+      (resa.physics.cooling_n2o) via numpy interpolation
+    - h_gas + T_gas arrays → coupled gas/coolant heat balance inside N2OCoolingSolver
+    - CoolingAnalysisResult (N2O) → extended CoolingResult
+
+    Use this adapter when the coolant is N2O (NitrousOxide). It activates:
+    - Phase-aware HTC: Gnielinski (single-phase), Chen correlation (boiling),
+      Jackson correlation (supercritical)
+    - CHF tracking (Bowring correlation; safety criterion: q/q_CHF < 0.5)
+    - Two-phase pressure drop (Lockhart-Martinelli + Zivi void fraction)
+    - Flow regime classification (subcooled, boiling, annular, supercritical, POST-CHF…)
+    - Supercritical heat transfer deterioration (HTD) warnings
+    """
+
+    def __init__(self, wall_conductivity: float = 350.0):
+        """
+        Args:
+            wall_conductivity: Wall thermal conductivity [W/m-K].
+                               Default 350 W/m-K for copper alloy (CuCrZr).
+        """
+        self.k_wall = wall_conductivity
+
+    def solve(
+        self,
+        mdot_coolant: float,
+        p_in: float,
+        t_in: float,
+        geometry: CoolingChannelGeometry,
+        T_gas: np.ndarray,
+        h_gas: np.ndarray,
+        mode: Literal['co-flow', 'counter-flow'] = 'counter-flow',
+        n_channels_override: Optional[int] = None,
+    ) -> CoolingResult:
+        """
+        Run N2O two-phase cooling analysis.
+
+        Args:
+            mdot_coolant: Total coolant mass flow [kg/s]
+            p_in: Coolant inlet pressure [Pa]
+            t_in: Coolant inlet temperature [K]
+            geometry: CoolingChannelGeometry (array-based, from resa.core.results)
+            T_gas: Gas recovery temperature array along nozzle [K]
+            h_gas: Gas-side HTC array along nozzle [W/m²-K]
+            mode: 'counter-flow' (coolant enters at nozzle exit) or 'co-flow'
+            n_channels_override: Override number of channels (default: geometry.num_channels)
+
+        Returns:
+            CoolingResult with extended N2O fields populated
+        """
+        from resa.physics.cooling_n2o import (
+            CoolingChannelGeometry as N2OChannelGeom,
+        )
+        from resa.physics.cooling_n2o import (
+            N2OCoolingSolver,
+        )
+
+        x_arr = geometry.x  # [m], injector-end to nozzle-exit
+
+        # Build callable interpolants from array geometry
+        def _interp(arr):
+            return lambda xi: float(np.interp(xi, x_arr, arr))
+
+        r_chamber_interp = _interp(geometry.y)
+        width_interp = _interp(geometry.channel_width)
+        height_interp = _interp(geometry.channel_height)
+        rib_interp = _interp(geometry.rib_width)
+        h_gas_interp = _interp(h_gas)
+        T_gas_interp = _interp(T_gas)
+
+        # N2O channel geometry uses a mean wall thickness (scalar)
+        t_wall_mean = float(np.mean(geometry.wall_thickness))
+
+        n2o_geom = N2OChannelGeom(
+            width=width_interp,
+            height=height_interp,
+            rib_width=rib_interp,
+            wall_thickness=t_wall_mean,
+            k_wall=self.k_wall,
+        )
+
+        n_channels = n_channels_override if n_channels_override is not None else geometry.num_channels
+        flow_direction = "counter" if mode == 'counter-flow' else "co"
+        x_start, x_end = float(x_arr[0]), float(x_arr[-1])
+
+        solver = N2OCoolingSolver(
+            contour=r_chamber_interp,
+            channel_geom=n2o_geom,
+            h_gas_profile=h_gas_interp,
+            T_gas_profile=T_gas_interp,
+            m_dot=mdot_coolant,
+            P_inlet=p_in,
+            T_inlet=t_in,
+            x_start=x_start,
+            x_end=x_end,
+            n_stations=len(x_arr),
+            n_channels=n_channels,
+            flow_direction=flow_direction,
+        )
+
+        n2o_result = solver.solve()
+
+        # Re-order stations so output is always injector→nozzle (ascending x)
+        stations = sorted(n2o_result.stations, key=lambda s: s.x)
+
+        # Extract arrays interpolated onto geometry.x grid
+        st_x = np.array([s.x for s in stations])
+
+        def _extract(fn):
+            vals = np.array([fn(s) for s in stations])
+            return np.interp(x_arr, st_x, vals)
+
+        T_coolant = _extract(lambda s: s.fluid.T)
+        P_coolant = _extract(lambda s: s.fluid.P)
+        T_wall_hot = _extract(lambda s: s.T_wall_hot)
+        T_wall_cold = _extract(lambda s: s.T_wall_cold)
+        q_flux = _extract(lambda s: s.q_flux)
+        velocity = _extract(lambda s: s.G / max(s.fluid.rho, 1e-6))
+        density = _extract(lambda s: s.fluid.rho)
+        h_conv = _extract(lambda s: s.h_conv)
+        chf_margin = _extract(lambda s: s.chf_margin)
+        quality = _extract(lambda s: s.fluid.quality if s.fluid.quality is not None else 0.0)
+        flow_regime = [
+            stations[int(np.argmin(np.abs(st_x - xi)))].flow_regime.value
+            for xi in x_arr
+        ]
+
+        pressure_drop_bar = (p_in - float(P_coolant[-1])) / 1e5
+        outlet_temp = float(T_coolant[-1] if mode == 'co-flow' else T_coolant[0])
+
+        return CoolingResult(
+            T_coolant=T_coolant,
+            P_coolant=P_coolant,
+            T_wall_hot=T_wall_hot,
+            T_wall_cold=T_wall_cold,
+            q_flux=q_flux,
+            velocity=velocity,
+            max_wall_temp=float(np.max(T_wall_hot)),
+            max_heat_flux=float(np.max(q_flux)),
+            pressure_drop=pressure_drop_bar,
+            outlet_temp=outlet_temp,
+            # Extended N2O fields
+            density=density,
+            h_conv=h_conv,
+            chf_margin=chf_margin,
+            quality=quality,
+            flow_regime=flow_regime,
+            min_chf_margin=float(n2o_result.min_chf_margin),
+            max_quality=float(n2o_result.max_quality),
+        )

@@ -7,12 +7,13 @@ Provides interactive visualizations for:
 - 3D engine geometry
 """
 
+from typing import TYPE_CHECKING, Any, Optional
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from typing import Optional, Dict, Any, TYPE_CHECKING
 
-from resa.visualization.themes import PlotTheme, EngineeringTheme, DEFAULT_THEME
+from resa.visualization.themes import DEFAULT_THEME, PlotTheme
 
 if TYPE_CHECKING:
     from resa.core.results import EngineDesignResult
@@ -143,7 +144,7 @@ class EngineDashboardPlotter:
                 x=x_mm, y=q_flux_mw,
                 name="Heat Flux",
                 mode='lines',
-                line=dict(color='#9b59b6', width=2),
+                line=dict(color=self.theme.purple, width=2),
                 hovertemplate="X: %{x:.1f} mm<br>q: %{y:.2f} MW/m²<extra></extra>"
             ),
             row=2, col=1, secondary_y=True
@@ -187,7 +188,7 @@ class EngineDashboardPlotter:
         fig.update_yaxes(title_text="Mach Number [-]", row=2, col=1, secondary_y=False,
                          title_font=dict(color=self.theme.accent))
         fig.update_yaxes(title_text="Heat Flux [MW/m²]", row=2, col=1, secondary_y=True,
-                         title_font=dict(color='#9b59b6'))
+                         title_font=dict(color=self.theme.purple))
 
         # Row 3
         fig.update_yaxes(title_text="Pressure [bar]", row=3, col=1)
@@ -217,12 +218,11 @@ class EngineDashboardPlotter:
                 y=1.01,
                 xanchor="center",
                 x=0.5,
-                bgcolor='rgba(255,255,255,0.8)',
             ),
             hovermode='x unified',
         )
 
-        # Apply theme
+        # Apply theme (overrides legend bgcolor, axis grid, fonts, etc.)
         self.theme.apply_to_figure(fig)
 
         return fig

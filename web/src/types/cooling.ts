@@ -89,4 +89,16 @@ export interface CoolingAnalysisResponse {
   coolant_velocity_m_s: number[];
   coolant_pressure_bar: number[];
   warnings: string[];
+
+  // N2O-specific extended fields (null/undefined when coolant is not N2O)
+  is_n2o_analysis: boolean;
+  min_chf_margin: number | null;
+  max_quality: number | null;
+  chf_margin: number[] | null;
+  vapor_quality: number[] | null;
+  flow_regime: string[] | null;
+  h_conv_kw_m2k: number[] | null;
+  density_kg_m3: number[] | null;
+  figure_t_rho: string | null;
+  figure_p_t: string | null;
 }

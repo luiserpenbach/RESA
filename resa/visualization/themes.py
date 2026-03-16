@@ -9,7 +9,8 @@ Provides consistent colors, fonts, and styling across:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List
+
 import plotly.graph_objects as go
 
 
@@ -61,6 +62,7 @@ class PlotTheme:
     hot_gas: str = "#FF4500"
     cold_flow: str = "#1E90FF"
     spray_cone: str = "rgba(65, 105, 225, 0.3)"
+    purple: str = "#9b59b6"
 
     # Typography
     font_family: str = "Arial, Helvetica, sans-serif"
@@ -114,6 +116,12 @@ class PlotTheme:
             paper_bgcolor=self.paper_background,
             plot_bgcolor=self.background,
             margin=self.margin,
+            legend=dict(
+                bgcolor=self.paper_background,
+                bordercolor=self.grid_color,
+                borderwidth=1,
+                font=dict(size=self.tick_size),
+            ),
         )
 
         # Update axes
@@ -260,6 +268,7 @@ class DarkTheme(PlotTheme):
     hot_gas: str = "#ff5722"
     cold_flow: str = "#2196f3"
     spray_cone: str = "rgba(65, 155, 255, 0.25)"
+    purple: str = "#ce93d8"
 
     # Color scales for heatmaps
     temperature_colorscale: List = field(default_factory=lambda: [
@@ -319,6 +328,9 @@ class DarkTheme(PlotTheme):
         )
         fig.update_xaxes(**axis_style)
         fig.update_yaxes(**axis_style)
+
+        # Subplot annotation (title) color for dark backgrounds
+        fig.update_annotations(font_color="#c8d6e5")
 
         return fig
 
