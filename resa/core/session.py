@@ -64,6 +64,10 @@ class DesignSession:
     ):
         """Generate cooling channel geometry with extended options."""
         self._check_dependencies("cooling_channels")
+        import dataclasses
+
+        import numpy as np
+
         from resa.geometry.cooling_channels import ChannelGeometryGenerator
 
         engine_result = self._results["engine"]
@@ -71,20 +75,55 @@ class DesignSession:
 
         generator = ChannelGeometryGenerator()
 
+        # Resolve parameter overrides (config takes priority over EngineConfig)
+        wall_thickness = (
+            config.wall_thickness_mm / 1000.0
+            if config.wall_thickness_mm is not None
+            else self.config.wall_thickness
+        )
+        rib_width = (
+            config.rib_width_throat_mm / 1000.0
+            if config.rib_width_throat_mm is not None
+            else self.config.rib_width_throat
+        )
+        roughness = (
+            config.roughness_microns * 1e-6
+            if config.roughness_microns is not None
+            else self.config.wall_roughness
+        )
+
+        # Clip nozzle geometry to axial margins
+        nozzle = engine_result.nozzle_geometry
+        x_full = nozzle.x_full
+        y_full = nozzle.y_full
+        x_start = x_full.min() + config.start_margin_mm / 1000.0
+        x_end = x_full.max() - config.end_margin_mm / 1000.0
+        mask = (x_full >= x_start) & (x_full <= x_end)
+        if mask.sum() < 10:
+            logger.warning(
+                "Axial margins leave fewer than 10 points; ignoring margins."
+            )
+            mask = np.ones(len(x_full), dtype=bool)
+        clipped_nozzle = dataclasses.replace(
+            nozzle,
+            x_full=x_full[mask],
+            y_full=y_full[mask],
+        )
+
         # Determine channel height based on profile
         if config.height_profile == "constant":
             height = config.height_throat_m
         else:
             height = config.height_throat_m  # base height, tapered later
 
-        # Get wall thickness and other params from engine config
         geom = generator.generate(
-            nozzle_geometry=engine_result.nozzle_geometry,
+            nozzle_geometry=clipped_nozzle,
             channel_width_throat=self.config.channel_width_throat,
             channel_height=height,
-            rib_width_throat=self.config.rib_width_throat,
-            wall_thickness=self.config.wall_thickness,
-            roughness=self.config.wall_roughness,
+            rib_width_throat=rib_width,
+            wall_thickness=wall_thickness,
+            roughness=roughness,
+            helix_angle_deg=config.helix_angle_deg,
             channel_type=config.channel_type,
             taper_angle_deg=config.taper_angle_deg,
             num_channels_override=config.num_channels_override,
@@ -92,10 +131,9 @@ class DesignSession:
 
         # Apply tapered height profile if requested
         if config.height_profile == "tapered":
-            nozzle = engine_result.nozzle_geometry
-            x = nozzle.x_full
+            x = clipped_nozzle.x_full
             x_min, x_max = x.min(), x.max()
-            x_throat = x[nozzle.y_full.argmin()]
+            x_throat = x[clipped_nozzle.y_full.argmin()]
 
             def tapered_height(xi):
                 if xi <= x_throat:
@@ -129,13 +167,31 @@ class DesignSession:
 
         from resa.solvers.cooling import RegenCoolingSolver
 
+        # Resolve coolant overrides from channel config if available
+        ch_cfg = self._module_configs.get("cooling_channels")
+        p_in = (
+            ch_cfg.coolant_p_in_bar * 1e5
+            if (ch_cfg is not None and ch_cfg.coolant_p_in_bar is not None)
+            else self.config.coolant_p_in_bar * 1e5
+        )
+        t_in = (
+            ch_cfg.coolant_t_in_k
+            if (ch_cfg is not None and ch_cfg.coolant_t_in_k is not None)
+            else self.config.coolant_t_in_k
+        )
+        mass_fraction = (
+            ch_cfg.coolant_mass_fraction
+            if (ch_cfg is not None and ch_cfg.coolant_mass_fraction is not None)
+            else self.config.coolant_mass_fraction
+        )
+
         solver = RegenCoolingSolver(wall_conductivity=self.config.wall_conductivity)
-        mdot_coolant = engine_result.massflow_fuel * self.config.coolant_mass_fraction
+        mdot_coolant = engine_result.massflow_fuel * mass_fraction
 
         cooling_result = solver.solve(
             mdot_coolant=mdot_coolant,
-            p_in=self.config.coolant_p_in_bar * 1e5,
-            t_in=self.config.coolant_t_in_k,
+            p_in=p_in,
+            t_in=t_in,
             geometry=channel_geom,
             T_gas=engine_result.T_gas_recovery,
             h_gas=engine_result.h_gas,

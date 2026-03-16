@@ -1,7 +1,7 @@
 /**
  * API client for cooling design and analysis.
  */
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import client from "./client";
 import type { CoolingChannelConfig, CoolingChannelResponse, CoolingAnalysisResponse } from "../types/cooling";
 
@@ -25,6 +25,16 @@ export async function analyzeCooling(
   return data;
 }
 
+export async function fetchCrossSection(
+  sessionId: string,
+  stationIdx: number
+): Promise<{ figure: string }> {
+  const { data } = await client.get<{ figure: string }>(
+    `/cooling/cross_section?session_id=${sessionId}&station_idx=${stationIdx}`
+  );
+  return data;
+}
+
 export function useDesignChannelsMutation() {
   return useMutation({
     mutationFn: (params: { sessionId: string; config: CoolingChannelConfig }) =>
@@ -35,5 +45,18 @@ export function useDesignChannelsMutation() {
 export function useAnalyzeCoolingMutation() {
   return useMutation({
     mutationFn: (sessionId: string) => analyzeCooling(sessionId),
+  });
+}
+
+export function useCrossSectionQuery(
+  sessionId: string | null,
+  stationIdx: number,
+  enabled: boolean
+) {
+  return useQuery({
+    queryKey: ["cooling-cross-section", sessionId, stationIdx],
+    queryFn: () => fetchCrossSection(sessionId!, stationIdx),
+    enabled: enabled && !!sessionId,
+    staleTime: Infinity,
   });
 }

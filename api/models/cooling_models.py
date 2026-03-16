@@ -29,6 +29,25 @@ class CoolingChannelConfigRequest(BaseModel):
         "none", "min_dp", "min_wall_temp", "max_margin"
     ] = "none"
 
+    # Wall geometry overrides (None = use EngineConfig value)
+    wall_thickness_mm: Optional[float] = None
+    rib_width_throat_mm: Optional[float] = None
+
+    # Axial margins for CAD import
+    start_margin_mm: float = 0.0
+    end_margin_mm: float = 0.0
+
+    # Surface roughness override (None = use EngineConfig value)
+    roughness_microns: Optional[float] = None
+
+    # Helix/spiral angle
+    helix_angle_deg: float = 0.0
+
+    # Coolant inlet overrides (None = use EngineConfig value)
+    coolant_p_in_bar: Optional[float] = None
+    coolant_t_in_k: Optional[float] = None
+    coolant_mass_fraction: Optional[float] = None
+
 
 class CoolingChannelResponse(BaseModel):
     """Response with cooling channel geometry details."""
@@ -42,11 +61,17 @@ class CoolingChannelResponse(BaseModel):
     max_channel_width_mm: float
     min_aspect_ratio: float
     max_aspect_ratio: float
+    wall_thickness_mm_val: float  # effective wall thickness used
 
     # Arrays as lists for JSON
     x_mm: list[float]
     channel_width_mm: list[float]
     channel_height_mm: list[float]
+    rib_width_mm: list[float]
+    inner_radius_mm: list[float]
+
+    # Pre-rendered figures
+    figure_3d: Optional[str] = None
 
 
 class CoolingAnalysisResponse(BaseModel):
