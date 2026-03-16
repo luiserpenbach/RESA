@@ -18,15 +18,24 @@ RESA/
 │   │   ├── engine.py              # Main Engine class orchestrating all solvers
 │   │   ├── results.py             # Immutable result dataclasses (frozen=True)
 │   │   ├── interfaces.py          # ABCs: Solver, FluidProvider, GeometryGenerator, etc.
-│   │   └── exceptions.py          # Exception hierarchy rooted at RESAError
+│   │   ├── exceptions.py          # Exception hierarchy rooted at RESAError
+│   │   ├── materials.py           # Material property definitions
+│   │   ├── module_configs.py      # Addon module configuration helpers
+│   │   └── session.py             # Session state management
 │   ├── physics/                   # Pure physics calculations (no side effects)
 │   │   ├── isentropic.py          # Isentropic flow relations, Mach calculations
 │   │   ├── heat_transfer.py       # Bartz equation, adiabatic wall temperature
 │   │   ├── cooling_n2o.py         # N2O cooling with boiling physics
-│   │   └── fluids.py              # CoolProp fluid property provider
+│   │   ├── fluids.py              # CoolProp fluid property provider
+│   │   ├── performance.py         # Engine performance calculations
+│   │   ├── structural.py          # Structural analysis (chamber/nozzle wall)
+│   │   └── feed_system.py         # Feed system hydraulics
 │   ├── solvers/                   # Integrated analysis solvers
 │   │   ├── combustion.py          # CEASolver wrapping RocketCEA
-│   │   └── cooling.py             # Regenerative cooling marching solver
+│   │   ├── cooling.py             # Regenerative cooling marching solver
+│   │   ├── performance.py         # Performance solver
+│   │   ├── structural.py          # Structural solver
+│   │   └── feed_system.py         # Feed system solver
 │   ├── geometry/                  # Geometry generators
 │   │   ├── nozzle.py              # Rao bell nozzle contour generation
 │   │   └── cooling_channels.py    # Cooling channel geometry
@@ -51,7 +60,19 @@ RESA/
 │   │   └── html_report.py         # Professional HTML reports with embedded Plotly
 │   ├── ui/                        # Streamlit application
 │   │   ├── app.py                 # Main Streamlit entry point
-│   │   └── pages/                 # UI pages (design, analysis, injector, igniter, etc.)
+│   │   └── pages/                 # UI pages (12 pages)
+│   │       ├── design_page.py     # Main engine design interface
+│   │       ├── cooling_page.py    # Regenerative cooling analysis
+│   │       ├── n2o_cooling_page.py # N2O-specific cooling analysis
+│   │       ├── contour_page.py    # 3D nozzle contour design
+│   │       ├── igniter_page.py    # Torch igniter sizing
+│   │       ├── injector_page.py   # Swirl injector design
+│   │       ├── tank_page.py       # Tank pressurization simulation
+│   │       ├── throttle_page.py   # Throttle analysis
+│   │       ├── optimization_page.py # Design optimization
+│   │       ├── monte_carlo_page.py  # MC uncertainty analysis
+│   │       ├── analysis_page.py   # General analysis
+│   │       └── projects_page.py   # Project management & version control
 │   ├── config/                    # Configuration defaults and utilities
 │   │   └── engine_config.py       # Default values and config helpers
 │   └── projects/                  # Project and version management
@@ -60,10 +81,27 @@ RESA/
 │       └── output_manager.py      # Output file organization
 ├── api/                           # FastAPI REST API
 │   ├── main.py                    # App entry point (serves React build at /)
-│   ├── routers/                   # engine.py, config_io.py
+│   ├── routers/                   # API route handlers
+│   │   ├── engine.py              # Engine design endpoints
+│   │   ├── cooling.py             # Cooling analysis endpoints
+│   │   ├── nozzle_contour.py      # Nozzle contour endpoints
+│   │   ├── performance.py         # Performance analysis endpoints
+│   │   ├── structural.py          # Structural analysis endpoints
+│   │   ├── feed_system.py         # Feed system endpoints
+│   │   ├── session.py             # Session management endpoints
+│   │   └── config_io.py           # Config import/export
 │   ├── models/                    # Pydantic request/response models
-│   └── services/                  # Serialization utilities
-├── web/                           # React frontend (built output served by FastAPI)
+│   │   ├── engine_models.py
+│   │   ├── cooling_models.py
+│   │   ├── contour_models.py
+│   │   ├── performance_models.py
+│   │   ├── feed_system_models.py
+│   │   ├── structural_models.py
+│   │   └── session_models.py
+│   └── services/                  # Utility services
+│       ├── serialization.py       # JSON/YAML serialization
+│       └── session_manager.py     # Session state management
+├── web/                           # React frontend (Vite + TypeScript, served by FastAPI)
 ├── examples/                      # Example scripts
 │   ├── new_architecture_demo.py   # v2.0 architecture showcase
 │   └── 2KN_Ethanox_example.py     # Simple 2kN engine design
@@ -188,7 +226,7 @@ Units convention in field names:
 - **NumPy/SciPy** - Numerical computing
 - **numpy-stl** - STL geometry export
 - **FastAPI** + **Uvicorn** - REST API server
-- **Pydantic** - API request/response validation
+- **Pydantic** - API request/response validation (v2)
 
 ## Code Conventions
 
@@ -271,7 +309,7 @@ Important public exports (from `resa/__init__.py`):
 5. **Visualization** code goes in `resa/visualization/` using Plotly and the `PlotTheme` system.
 6. **UI pages** go in `resa/ui/pages/` as Streamlit page modules.
 7. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`ui`/`reporting` depend on everything above but never the reverse. `api/` depends on the `resa` package but is not part of it.
-8. **REST API** (`api/`) uses FastAPI and Pydantic v2. Routers live in `api/routers/`, models in `api/models/`. The server also serves the compiled React frontend from `web/dist/`.
+8. **REST API** (`api/`) uses FastAPI and Pydantic v2. Routers live in `api/routers/`, models in `api/models/`, services in `api/services/`. The server also serves the compiled React frontend from `web/dist/`.
 9. **Legacy directories** (`rocket_engine/`, `fluid_lib/`, `swirl_injector/`, `torch_igniter_advanced/`, `advanced_contour_design/`) contain older code being migrated into the `resa/` package. New development should go in `resa/`.
 10. **Test files** currently live in `torch_igniter_advanced/`. New tests should use `pytest` conventions and target `resa/` package code.
 11. **Format code** with Black (line-length 100) and lint with Ruff before committing.
