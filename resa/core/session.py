@@ -129,7 +129,7 @@ class DesignSession:
 
         from resa.solvers.cooling import RegenCoolingSolver
 
-        solver = RegenCoolingSolver(self.config.coolant_name)
+        solver = RegenCoolingSolver(wall_conductivity=self.config.wall_conductivity)
         mdot_coolant = engine_result.massflow_fuel * self.config.coolant_mass_fraction
 
         cooling_result = solver.solve(

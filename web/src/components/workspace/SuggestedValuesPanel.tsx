@@ -1,11 +1,6 @@
 import { useEffect, useRef } from "react";
+import Plotly from "plotly.js-dist-min";
 import type { EngineDesignResponse, EngineConfigRequest } from "../../types/engine";
-
-// Suppress Plotly type issues — loaded as UMD global
-declare const Plotly: {
-  newPlot: (el: HTMLElement, data: unknown[], layout: unknown, config?: unknown) => void;
-  purge: (el: HTMLElement) => void;
-};
 
 interface SuggestedValuesPanelProps {
   config: EngineConfigRequest;
