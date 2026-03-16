@@ -99,13 +99,19 @@ async def analyze_cooling(
     # Generate thermal dashboard figure
     figure_json = None
     try:
+        import dataclasses
+
         from resa.visualization.engine_plots import EngineDashboardPlotter
         from resa.visualization.themes import DarkTheme
 
         engine_result = session.engine_result
         if engine_result is not None:
+            # Merge the freshly computed cooling result into engine_result so the
+            # plotter has access to thermal arrays (engine_result.cooling is None
+            # at this point because cooling runs as a separate session step).
+            engine_result_with_cooling = dataclasses.replace(engine_result, cooling=result)
             plotter = EngineDashboardPlotter(theme=DarkTheme())
-            fig = plotter.create_figure(engine_result)
+            fig = plotter.create_figure(engine_result_with_cooling)
             figure_json = fig.to_json()
     except Exception:
         logger.warning("Could not generate thermal figure", exc_info=True)
