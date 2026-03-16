@@ -454,11 +454,9 @@ function CoolingWorkspace({
   onTabChange: (tab: string) => void;
 }) {
   const baseTabsAlways = ["channels", "cross-section", "3d-view", "thermal"];
-  const n2oTabs =
-    analysisResult?.is_n2o_analysis
-      ? ["t-rho", "p-t"]
-      : [];
-  const tabs = [...baseTabsAlways, ...n2oTabs];
+  const thermalChannelTab = analysisResult?.figure_3d_thermal ? ["3d-thermal"] : [];
+  const n2oTabs = analysisResult?.is_n2o_analysis ? ["t-rho", "p-t"] : [];
+  const tabs = [...baseTabsAlways, ...thermalChannelTab, ...n2oTabs];
 
   // Build a Plotly figure JSON for the channel profile from the response arrays.
   const channelFigureJson = useMemo(() => {
@@ -530,6 +528,8 @@ function CoolingWorkspace({
         return "3D View";
       case "thermal":
         return "Thermal Dashboard";
+      case "3d-thermal":
+        return "3D Thermal";
       case "t-rho":
         return "T-ρ Diagram";
       case "p-t":
@@ -576,6 +576,10 @@ function CoolingWorkspace({
 
         {activeTab === "thermal" && analysisResult && (
           <PlotlyRenderer figureJson={analysisResult.figure_thermal} height={500} />
+        )}
+
+        {activeTab === "3d-thermal" && analysisResult && (
+          <PlotlyRenderer figureJson={analysisResult.figure_3d_thermal} height={560} />
         )}
 
         {activeTab === "t-rho" && analysisResult && (

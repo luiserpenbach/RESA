@@ -110,3 +110,6 @@ class CoolingAnalysisResponse(BaseModel):
     # Phase diagram figures
     figure_t_rho: Optional[str] = None
     figure_p_t: Optional[str] = None
+
+    # 3D thermal channel figure (single channel colored by T_wall_hot)
+    figure_3d_thermal: Optional[str] = None

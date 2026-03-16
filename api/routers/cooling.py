@@ -153,6 +153,24 @@ async def analyze_cooling(
         except Exception:
             logger.warning("Could not generate N2O phase diagram figures", exc_info=True)
 
+    # Generate 3D thermal channel figure
+    figure_3d_thermal = None
+    channel_geom = session.get_result("cooling_channels")
+    if channel_geom is not None:
+        try:
+            from resa.visualization.engine_3d import Engine3DViewer
+            from resa.visualization.themes import DarkTheme
+
+            viewer = Engine3DViewer(theme=DarkTheme(), dark_mode=True)
+            fig_3d_th = viewer.render_single_channel_thermal(
+                channel_geom,
+                temperature_data=result.T_wall_hot,
+                colorbar_title='T_wall_hot [K]',
+            )
+            figure_3d_thermal = fig_3d_th.to_json()
+        except Exception:
+            logger.warning("Could not generate 3D thermal channel figure", exc_info=True)
+
     nozzle = session.engine_result.nozzle_geometry if session.engine_result else None
     x_mm = (nozzle.x_full * 1e3).tolist() if nozzle is not None else []
 
@@ -194,6 +212,7 @@ async def analyze_cooling(
         density_kg_m3=result.density.tolist() if result.density is not None else None,
         figure_t_rho=figure_t_rho,
         figure_p_t=figure_p_t,
+        figure_3d_thermal=figure_3d_thermal,
     )
 
 
