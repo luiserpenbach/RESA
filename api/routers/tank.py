@@ -20,6 +20,12 @@ router = APIRouter(prefix="/tank", tags=["tank"])
 
 MAX_OUTPUT_POINTS = 200
 
+# Physical constants used in pressure reconstruction for the Ethanol tank case.
+# R_N2: specific gas constant of nitrogen [J/(kg·K)], NIST value.
+# RHO_ETHANOL: approximate liquid ethanol density at 20°C [kg/m³].
+_R_N2 = 296.8
+_RHO_ETHANOL = 789.0
+
 
 def _downsample(arr: np.ndarray, n: int) -> list[float]:
     """Evenly downsample array to at most n points."""
@@ -119,14 +125,12 @@ async def simulate_tank(req: TankSimConfigRequest | None = None):
         T_ullage = y[2]  # single phase - same temp
 
         # Re-derive pressure from pressurant ideal gas
-        R_N2 = 296.8  # J/kg/K for nitrogen
         pressures = np.zeros(len(t))
         for i in range(len(t)):
-            rho_liq = 789.0  # approximate ethanol density kg/m3
-            V_liq = float(m_liquid[i]) / rho_liq
+            V_liq = float(m_liquid[i]) / _RHO_ETHANOL
             V_ullage = req.tank.volume - V_liq
             if V_ullage > 1e-6 and y[1][i] > 0:
-                pressures[i] = float(y[1][i]) * R_N2 * float(T_liquid[i]) / V_ullage / 1e5
+                pressures[i] = float(y[1][i]) * _R_N2 * float(T_liquid[i]) / V_ullage / 1e5
             else:
                 pressures[i] = req.tank.initial_ullage_pressure / 1e5
 

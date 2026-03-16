@@ -55,7 +55,13 @@ include = ["resa*"]
 line-length = 100
 target-version = ["py39", "py310", "py311"]
 
+[tool.pytest.ini_options]
+testpaths = ["api/tests", "torch_igniter_advanced"]
+asyncio_mode = "auto"
+
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]

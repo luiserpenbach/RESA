@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Icon } from "@blueprintjs/core";
 import { ModuleGate } from "../../components/common/ModuleGate";
 import { useDesignSessionStore } from "../../store/designSessionStore";
 import { useMonteCarloMutation } from "../../api/monte_carlo";
 import type { MonteCarloConfig, MonteCarloResponse, ParameterSpec } from "../../types/monte_carlo";
 import { DEFAULT_MC_CONFIG } from "../../types/monte_carlo";
+import { PlotlyRenderer } from "../../components/plots/PlotlyRenderer";
 
 function extractError(err: unknown): string {
   if (err && typeof err === "object" && "response" in err) {
@@ -38,6 +39,17 @@ const DEFAULT_PARAMS: ParameterSpec[] = [
   { name: "pc_bar", nominal: 25.0, distribution: "normal", std_dev: 0.75, min_val: null, max_val: null, mode: null },
   { name: "mr", nominal: 4.0, distribution: "normal", std_dev: 0.12, min_val: null, max_val: null, mode: null },
 ];
+
+const DARK_LAYOUT: object = {
+  paper_bgcolor: "#0d1117",
+  plot_bgcolor: "#0d1117",
+  font: { color: "#c9d1d9", size: 11 },
+  margin: { t: 24, r: 16, b: 48, l: 56 },
+  xaxis: { gridcolor: "#21262d", zerolinecolor: "#21262d" },
+  yaxis: { gridcolor: "#21262d", zerolinecolor: "#21262d" },
+};
+
+const TRACE_COLORS = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff"];
 
 export default function MonteCarloPage() {
   const { sessionId } = useDesignSessionStore();
@@ -81,6 +93,57 @@ export default function MonteCarloPage() {
   }));
 
   const outputNames = result ? Object.keys(result.statistics) : [];
+
+  const histogramFigure = useMemo(() => {
+    if (!result) return null;
+    const samples = result.output_samples;
+    const names = Object.keys(samples);
+    if (names.length === 0) return null;
+    return JSON.stringify({
+      data: names.map((name, i) => ({
+        type: "histogram",
+        x: samples[name],
+        name,
+        opacity: 0.75,
+        marker: { color: TRACE_COLORS[i % TRACE_COLORS.length] },
+        nbinsx: 30,
+      })),
+      layout: {
+        ...DARK_LAYOUT,
+        barmode: "overlay",
+        xaxis: { ...(DARK_LAYOUT as Record<string, object>).xaxis, title: "Value" },
+        yaxis: { ...(DARK_LAYOUT as Record<string, object>).yaxis, title: "Count" },
+        legend: { bgcolor: "transparent" },
+      },
+    });
+  }, [result]);
+
+  const tornadoFigure = useMemo(() => {
+    if (!result || outputNames.length === 0) return null;
+    // Build tornado for the first output
+    const outName = outputNames[0];
+    const sens = result.sensitivity[outName] || {};
+    const entries = Object.entries(sens).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    const params = entries.map(([p]) => p);
+    const values = entries.map(([, v]) => v);
+    const colors = values.map((v) => (v >= 0 ? "#58a6ff" : "#f85149"));
+    return JSON.stringify({
+      data: [{
+        type: "bar",
+        orientation: "h",
+        x: values,
+        y: params,
+        marker: { color: colors },
+        name: "Pearson r",
+      }],
+      layout: {
+        ...DARK_LAYOUT,
+        title: { text: `Sensitivity — ${outName}`, font: { size: 12, color: "#8b949e" } },
+        xaxis: { ...(DARK_LAYOUT as Record<string, object>).xaxis, title: "Pearson r", range: [-1, 1] },
+        yaxis: { ...(DARK_LAYOUT as Record<string, object>).yaxis },
+      },
+    });
+  }, [result, outputNames]);
 
   return (
     <ModuleGate requires={["engine"]}>
@@ -171,7 +234,7 @@ export default function MonteCarloPage() {
       <div className="app-workspace">
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
           <div className="workspace-tabs">
-            {["statistics", "sensitivity"].map((tab) => (
+            {["statistics", "sensitivity", "histogram"].map((tab) => (
               <button key={tab} className={`workspace-tab ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
@@ -211,35 +274,10 @@ export default function MonteCarloPage() {
               </table>
             )}
             {result && activeTab === "sensitivity" && (
-              <div>
-                {outputNames.map((outName) => {
-                  const sens = result.sensitivity[outName] || {};
-                  const entries = Object.entries(sens).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
-                  return (
-                    <div key={outName} style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>{outName}</div>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                        <thead><tr>
-                          <th style={thStyle}>Parameter</th>
-                          <th style={thStyle}>Pearson r</th>
-                          <th style={thStyle}>Influence</th>
-                        </tr></thead>
-                        <tbody>
-                          {entries.map(([param, r]) => (
-                            <tr key={param}>
-                              <td style={tdStyle}>{param}</td>
-                              <td style={tdStyle}>{r.toFixed(4)}</td>
-                              <td style={tdStyle}>
-                                <div style={{ width: `${Math.abs(r) * 100}%`, height: 6, background: r >= 0 ? "var(--accent-bright)" : "var(--red)", borderRadius: 3 }} />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })}
-              </div>
+              <PlotlyRenderer figureJson={tornadoFigure} loading={isRunning} height={360} />
+            )}
+            {result && activeTab === "histogram" && (
+              <PlotlyRenderer figureJson={histogramFigure} loading={isRunning} height={400} />
             )}
           </div>
         </div>

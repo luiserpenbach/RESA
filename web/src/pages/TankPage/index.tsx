@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Icon } from "@blueprintjs/core";
 import { useTankMutation } from "../../api/tank";
 import type { TankSimConfig, TankSimResponse } from "../../types/tank";
 import { DEFAULT_TANK_CONFIG } from "../../types/tank";
+import { PlotlyRenderer } from "../../components/plots/PlotlyRenderer";
 
 function extractError(err: unknown): string {
   if (err && typeof err === "object" && "response" in err) {
@@ -40,10 +41,36 @@ function SectionLabel({ text }: { text: string }) {
   );
 }
 
-function sampleIndices(total: number, count: number): number[] {
-  if (total <= count) return Array.from({ length: total }, (_, i) => i);
-  const step = (total - 1) / (count - 1);
-  return Array.from({ length: count }, (_, i) => Math.round(i * step));
+const DARK_LAYOUT: object = {
+  paper_bgcolor: "#0d1117",
+  plot_bgcolor: "#0d1117",
+  font: { color: "#c9d1d9", size: 11 },
+  margin: { t: 24, r: 16, b: 48, l: 56 },
+  xaxis: { gridcolor: "#21262d", zerolinecolor: "#21262d" },
+  yaxis: { gridcolor: "#21262d", zerolinecolor: "#21262d" },
+};
+
+function makeFigureJson(
+  x: number[],
+  traces: { y: number[]; name: string; color: string }[],
+  xTitle: string,
+  yTitle: string,
+): string {
+  return JSON.stringify({
+    data: traces.map((t) => ({
+      type: "scatter",
+      mode: "lines",
+      x,
+      y: t.y,
+      name: t.name,
+      line: { color: t.color, width: 2 },
+    })),
+    layout: {
+      ...DARK_LAYOUT,
+      xaxis: { ...(DARK_LAYOUT as Record<string, object>).xaxis, title: xTitle },
+      yaxis: { ...(DARK_LAYOUT as Record<string, object>).yaxis, title: yTitle },
+    },
+  });
 }
 
 export default function TankPage() {
@@ -74,7 +101,25 @@ export default function TankPage() {
   const setPres = (p: Partial<typeof config.pressurant>) => setConfig((c) => ({ ...c, pressurant: { ...c.pressurant, ...p } }));
   const setProp = (p: Partial<typeof config.propellant>) => setConfig((c) => ({ ...c, propellant: { ...c.propellant, ...p } }));
 
-  const displayRows = result ? sampleIndices(result.time_s.length, 20) : [];
+  const pressureFigure = useMemo(() => {
+    if (!result) return null;
+    return makeFigureJson(
+      result.time_s,
+      [{ y: result.pressure_bar, name: "Pressure", color: "#58a6ff" }],
+      "Time [s]",
+      "Pressure [bar]",
+    );
+  }, [result]);
+
+  const massFigure = useMemo(() => {
+    if (!result) return null;
+    return makeFigureJson(
+      result.time_s,
+      [{ y: result.liquid_mass_kg, name: "Liquid Mass", color: "#3fb950" }],
+      "Time [s]",
+      "Liquid Mass [kg]",
+    );
+  }, [result]);
 
   return (
     <>
@@ -166,36 +211,10 @@ export default function TankPage() {
               </div>
             )}
             {result && activeTab === "pressure" && (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                <thead><tr>
-                  <th style={thStyle}>Time [s]</th>
-                  <th style={thStyle}>Pressure [bar]</th>
-                </tr></thead>
-                <tbody>
-                  {displayRows.map((i) => (
-                    <tr key={i}>
-                      <td style={tdStyle}>{result.time_s[i].toFixed(2)}</td>
-                      <td style={tdStyle}>{result.pressure_bar[i].toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <PlotlyRenderer figureJson={pressureFigure} loading={isRunning} height={420} />
             )}
             {result && activeTab === "mass" && (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                <thead><tr>
-                  <th style={thStyle}>Time [s]</th>
-                  <th style={thStyle}>Liquid Mass [kg]</th>
-                </tr></thead>
-                <tbody>
-                  {displayRows.map((i) => (
-                    <tr key={i}>
-                      <td style={tdStyle}>{result.time_s[i].toFixed(2)}</td>
-                      <td style={tdStyle}>{result.liquid_mass_kg[i].toFixed(3)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <PlotlyRenderer figureJson={massFigure} loading={isRunning} height={420} />
             )}
             {result && activeTab === "temperature" && (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
@@ -205,9 +224,9 @@ export default function TankPage() {
                   <th style={thStyle}>Ullage T [K]</th>
                 </tr></thead>
                 <tbody>
-                  {displayRows.map((i) => (
+                  {result.time_s.map((t, i) => (
                     <tr key={i}>
-                      <td style={tdStyle}>{result.time_s[i].toFixed(2)}</td>
+                      <td style={tdStyle}>{t.toFixed(2)}</td>
                       <td style={tdStyle}>{result.liquid_temperature_k[i].toFixed(2)}</td>
                       <td style={tdStyle}>{result.ullage_temperature_k[i].toFixed(2)}</td>
                     </tr>
