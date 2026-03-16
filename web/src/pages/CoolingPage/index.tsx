@@ -1,11 +1,19 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Icon } from "@blueprintjs/core";
 import { ModuleGate } from "../../components/common/ModuleGate";
 import { StaleDataBanner } from "../../components/common/StaleDataBanner";
 import { PlotlyRenderer } from "../../components/plots/PlotlyRenderer";
 import { useDesignSessionStore } from "../../store/designSessionStore";
-import { useDesignChannelsMutation, useAnalyzeCoolingMutation } from "../../api/cooling";
-import type { CoolingChannelConfig, CoolingChannelResponse, CoolingAnalysisResponse } from "../../types/cooling";
+import {
+  useDesignChannelsMutation,
+  useAnalyzeCoolingMutation,
+  useCrossSectionQuery,
+} from "../../api/cooling";
+import type {
+  CoolingChannelConfig,
+  CoolingChannelResponse,
+  CoolingAnalysisResponse,
+} from "../../types/cooling";
 
 function extractError(err: unknown): string {
   if (err && typeof err === "object" && "response" in err) {
@@ -30,6 +38,43 @@ const coolingInputStyle: React.CSSProperties = {
   boxSizing: "border-box" as const,
 };
 
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: "0.10em",
+  textTransform: "uppercase" as const,
+  color: "var(--text-muted)",
+  marginBottom: 6,
+  marginTop: 10,
+};
+
+/** Nullable number input: empty string maps to null, number maps to number */
+function NullableNumberInput({
+  value,
+  onChange,
+  placeholder,
+  step,
+  min,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  placeholder?: string;
+  step?: string;
+  min?: string;
+}) {
+  return (
+    <input
+      style={coolingInputStyle}
+      type="number"
+      step={step ?? "any"}
+      min={min}
+      placeholder={placeholder ?? "auto"}
+      value={value === null ? "" : value}
+      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+    />
+  );
+}
+
 function CoolingConfigForm({
   config,
   onChange,
@@ -42,7 +87,9 @@ function CoolingConfigForm({
   isRunning: boolean;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {/* ── Channel Geometry ── */}
+      <div style={sectionLabelStyle}>Channel Geometry</div>
       <table className="param-table">
         <tbody>
           <tr>
@@ -51,7 +98,9 @@ function CoolingConfigForm({
               <select
                 className="form-select"
                 value={config.channel_type}
-                onChange={(e) => onChange({ channel_type: e.target.value as "rectangular" | "trapezoidal" })}
+                onChange={(e) =>
+                  onChange({ channel_type: e.target.value as "rectangular" | "trapezoidal" })
+                }
               >
                 <option value="rectangular">Rectangular</option>
                 <option value="trapezoidal">Trapezoidal</option>
@@ -96,7 +145,9 @@ function CoolingConfigForm({
                     type="number"
                     step="0.1"
                     value={config.height_chamber_m * 1e3}
-                    onChange={(e) => onChange({ height_chamber_m: Number(e.target.value) / 1e3 })}
+                    onChange={(e) =>
+                      onChange({ height_chamber_m: Number(e.target.value) / 1e3 })
+                    }
                   />
                 </td>
               </tr>
@@ -108,7 +159,9 @@ function CoolingConfigForm({
                     type="number"
                     step="0.1"
                     value={config.height_exit_m * 1e3}
-                    onChange={(e) => onChange({ height_exit_m: Number(e.target.value) / 1e3 })}
+                    onChange={(e) =>
+                      onChange({ height_exit_m: Number(e.target.value) / 1e3 })
+                    }
                   />
                 </td>
               </tr>
@@ -130,6 +183,56 @@ function CoolingConfigForm({
             </tr>
           )}
 
+          <tr>
+            <td className="param-label">Wall Thickness [mm]</td>
+            <td className="param-value">
+              <NullableNumberInput
+                value={config.wall_thickness_mm}
+                onChange={(v) => onChange({ wall_thickness_mm: v })}
+                placeholder="from engine"
+                step="0.1"
+                min="0.1"
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Rib Width [mm]</td>
+            <td className="param-value">
+              <NullableNumberInput
+                value={config.rib_width_throat_mm}
+                onChange={(v) => onChange({ rib_width_throat_mm: v })}
+                placeholder="from engine"
+                step="0.1"
+                min="0.1"
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Helix Angle [deg]</td>
+            <td className="param-value">
+              <input
+                style={coolingInputStyle}
+                type="number"
+                step="1"
+                min="0"
+                max="45"
+                value={config.helix_angle_deg}
+                onChange={(e) => onChange({ helix_angle_deg: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Wall Roughness [µm]</td>
+            <td className="param-value">
+              <NullableNumberInput
+                value={config.roughness_microns}
+                onChange={(v) => onChange({ roughness_microns: v })}
+                placeholder="from engine"
+                step="1"
+                min="0"
+              />
+            </td>
+          </tr>
           <tr>
             <td className="param-label">Channel Count Override</td>
             <td className="param-value">
@@ -162,11 +265,87 @@ function CoolingConfigForm({
         </tbody>
       </table>
 
+      {/* ── Axial Margins ── */}
+      <div style={sectionLabelStyle}>Axial Margins (CAD)</div>
+      <table className="param-table">
+        <tbody>
+          <tr>
+            <td className="param-label">Start Margin [mm]</td>
+            <td className="param-value">
+              <input
+                style={coolingInputStyle}
+                type="number"
+                step="1"
+                min="0"
+                value={config.start_margin_mm}
+                onChange={(e) => onChange({ start_margin_mm: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">End Margin [mm]</td>
+            <td className="param-value">
+              <input
+                style={coolingInputStyle}
+                type="number"
+                step="1"
+                min="0"
+                value={config.end_margin_mm}
+                onChange={(e) => onChange({ end_margin_mm: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ── Coolant Conditions ── */}
+      <div style={sectionLabelStyle}>Coolant Conditions</div>
+      <table className="param-table">
+        <tbody>
+          <tr>
+            <td className="param-label">Inlet Pressure [bar]</td>
+            <td className="param-value">
+              <NullableNumberInput
+                value={config.coolant_p_in_bar}
+                onChange={(v) => onChange({ coolant_p_in_bar: v })}
+                placeholder="from engine"
+                step="1"
+                min="0"
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Inlet Temperature [K]</td>
+            <td className="param-value">
+              <NullableNumberInput
+                value={config.coolant_t_in_k}
+                onChange={(v) => onChange({ coolant_t_in_k: v })}
+                placeholder="from engine"
+                step="1"
+                min="0"
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Mass Fraction</td>
+            <td className="param-value">
+              <NullableNumberInput
+                value={config.coolant_mass_fraction}
+                onChange={(v) => onChange({ coolant_mass_fraction: v })}
+                placeholder="from engine"
+                step="0.05"
+                min="0"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
       <button
         className={`run-btn ${isRunning ? "is-running" : ""}`}
         onClick={onRun}
         disabled={isRunning}
-        style={{ marginTop: 4, width: "100%" }}
+        style={{ marginTop: 8, width: "100%" }}
       >
         <Icon icon={isRunning ? "dot" : "play"} size={12} />
         {isRunning ? "COMPUTING..." : "RUN COOLING"}
@@ -175,18 +354,106 @@ function CoolingConfigForm({
   );
 }
 
+function CrossSectionPanel({
+  sessionId,
+  channelResult,
+}: {
+  sessionId: string | null;
+  channelResult: CoolingChannelResponse | null;
+}) {
+  const n = channelResult ? channelResult.x_mm.length : 0;
+  const midpoint = n > 0 ? Math.floor(n / 2) : 0;
+  const [stationIdx, setStationIdx] = useState(midpoint);
+  const [debouncedIdx, setDebouncedIdx] = useState(midpoint);
+
+  // Reset to midpoint when channel result changes
+  useEffect(() => {
+    const mid = n > 0 ? Math.floor(n / 2) : 0;
+    setStationIdx(mid);
+    setDebouncedIdx(mid);
+  }, [n]);
+
+  // Debounce slider
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedIdx(stationIdx), 200);
+    return () => clearTimeout(timer);
+  }, [stationIdx]);
+
+  const { data, isFetching } = useCrossSectionQuery(
+    sessionId,
+    debouncedIdx,
+    !!channelResult
+  );
+
+  if (!channelResult) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "var(--text-muted)",
+          fontSize: 12,
+        }}
+      >
+        Run cooling to enable cross-section view
+      </div>
+    );
+  }
+
+  const currentX = channelResult.x_mm[stationIdx]?.toFixed(1) ?? "—";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Slider controls */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+          Axial position:
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0, n - 1)}
+          step={1}
+          value={stationIdx}
+          onChange={(e) => setStationIdx(Number(e.target.value))}
+          style={{ flex: 1 }}
+        />
+        <span
+          style={{
+            fontSize: 11,
+            fontFamily: "var(--font-mono)",
+            color: "var(--text-primary)",
+            minWidth: 70,
+            textAlign: "right",
+          }}
+        >
+          {currentX} mm
+        </span>
+        {isFetching && (
+          <Icon icon="dot" size={10} style={{ color: "var(--text-muted)" }} />
+        )}
+      </div>
+      <PlotlyRenderer figureJson={data?.figure ?? null} height={440} />
+    </div>
+  );
+}
+
 function CoolingWorkspace({
+  sessionId,
   channelResult,
   analysisResult,
   activeTab,
   onTabChange,
 }: {
+  sessionId: string | null;
   channelResult: CoolingChannelResponse | null;
   analysisResult: CoolingAnalysisResponse | null;
   activeTab: string;
   onTabChange: (tab: string) => void;
 }) {
-  const tabs = ["channels", "thermal"];
+  const tabs = ["channels", "cross-section", "3d-view", "thermal"];
 
   // Build a Plotly figure JSON for the channel profile from the response arrays.
   const channelFigureJson = useMemo(() => {
@@ -211,11 +478,35 @@ function CoolingWorkspace({
           line: { color: "#2ecc71", width: 2 },
           hovertemplate: "X: %{x:.1f} mm<br>Height: %{y:.3f} mm<extra></extra>",
         },
+        {
+          type: "scatter",
+          x: channelResult.x_mm,
+          y: channelResult.rib_width_mm,
+          name: "Rib Width",
+          mode: "lines",
+          line: { color: "#f39c12", width: 2, dash: "dot" },
+          hovertemplate: "X: %{x:.1f} mm<br>Rib: %{y:.3f} mm<extra></extra>",
+        },
       ],
       layout: {
-        xaxis: { title: "Axial Position [mm]", color: "#a0a0a0", gridcolor: "#252525", linecolor: "#2e2e2e" },
-        yaxis: { title: "Dimension [mm]", color: "#a0a0a0", gridcolor: "#252525", linecolor: "#2e2e2e" },
-        legend: { font: { color: "#a0a0a0" }, bgcolor: "rgba(22,22,22,0.85)", bordercolor: "#2e2e2e", borderwidth: 1 },
+        xaxis: {
+          title: "Axial Position [mm]",
+          color: "#a0a0a0",
+          gridcolor: "#252525",
+          linecolor: "#2e2e2e",
+        },
+        yaxis: {
+          title: "Dimension [mm]",
+          color: "#a0a0a0",
+          gridcolor: "#252525",
+          linecolor: "#2e2e2e",
+        },
+        legend: {
+          font: { color: "#a0a0a0" },
+          bgcolor: "rgba(22,22,22,0.85)",
+          bordercolor: "#2e2e2e",
+          borderwidth: 1,
+        },
         paper_bgcolor: "#161616",
         plot_bgcolor: "#111111",
         font: { color: "#e2e2e2", size: 11 },
@@ -223,6 +514,21 @@ function CoolingWorkspace({
       },
     });
   }, [channelResult]);
+
+  const tabLabel = (tab: string) => {
+    switch (tab) {
+      case "channels":
+        return "Channel Profile";
+      case "cross-section":
+        return "Cross-Section";
+      case "3d-view":
+        return "3D View";
+      case "thermal":
+        return "Thermal Dashboard";
+      default:
+        return tab;
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -234,7 +540,7 @@ function CoolingWorkspace({
             className={`workspace-tab ${activeTab === tab ? "active" : ""}`}
             onClick={() => onTabChange(tab)}
           >
-            {tab === "channels" ? "Channel Profile" : "Thermal Dashboard"}
+            {tabLabel(tab)}
           </button>
         ))}
       </div>
@@ -251,11 +557,19 @@ function CoolingWorkspace({
           </div>
         )}
 
+        {activeTab === "cross-section" && (
+          <CrossSectionPanel sessionId={sessionId} channelResult={channelResult} />
+        )}
+
+        {activeTab === "3d-view" && channelResult && (
+          <PlotlyRenderer figureJson={channelResult.figure_3d} height={500} />
+        )}
+
         {activeTab === "thermal" && analysisResult && (
           <PlotlyRenderer figureJson={analysisResult.figure_thermal} height={500} />
         )}
 
-        {!channelResult && !analysisResult && (
+        {!channelResult && !analysisResult && activeTab !== "cross-section" && (
           <div
             style={{
               display: "flex",
@@ -304,8 +618,27 @@ function CoolingMetrics({
             value={`${channelResult.min_channel_width_mm.toFixed(2)} mm`}
           />
           <MetricRow
+            label="Max Width"
+            value={`${channelResult.max_channel_width_mm.toFixed(2)} mm`}
+          />
+          <MetricRow
             label="Max AR"
             value={channelResult.max_aspect_ratio.toFixed(1)}
+          />
+          <MetricRow
+            label="Wall Thickness"
+            value={`${channelResult.wall_thickness_mm_val.toFixed(2)} mm`}
+          />
+          <MetricRow
+            label="Axial Span"
+            value={
+              channelResult.x_mm.length > 1
+                ? `${(
+                    channelResult.x_mm[channelResult.x_mm.length - 1] -
+                    channelResult.x_mm[0]
+                  ).toFixed(1)} mm`
+                : "—"
+            }
           />
         </div>
       )}
@@ -366,9 +699,7 @@ function CoolingMetrics({
       )}
 
       {!channelResult && !analysisResult && (
-        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          No results yet
-        </div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>No results yet</div>
       )}
     </div>
   );
@@ -446,7 +777,15 @@ export default function CoolingPage() {
     } catch (err) {
       setErrorMsg(extractError(err));
     }
-  }, [sessionId, coolingConfig, channelsMutation, analysisMutation, setCoolingChannelResult, setCoolingAnalysisResult, markModuleCompleted]);
+  }, [
+    sessionId,
+    coolingConfig,
+    channelsMutation,
+    analysisMutation,
+    setCoolingChannelResult,
+    setCoolingAnalysisResult,
+    markModuleCompleted,
+  ]);
 
   return (
     <ModuleGate requires={["engine"]}>
@@ -507,6 +846,7 @@ export default function CoolingPage() {
       {/* Center workspace */}
       <div className="app-workspace">
         <CoolingWorkspace
+          sessionId={sessionId}
           channelResult={coolingChannelResult}
           analysisResult={coolingAnalysisResult}
           activeTab={activeTab}
@@ -526,17 +866,25 @@ export default function CoolingPage() {
       <footer className="app-statusbar">
         <div className="statusbar-item">
           <Icon
-            icon={isRunning ? "dot" : errorMsg ? "cross" : coolingAnalysisResult ? "tick-circle" : "circle"}
+            icon={
+              isRunning
+                ? "dot"
+                : errorMsg
+                ? "cross"
+                : coolingAnalysisResult
+                ? "tick-circle"
+                : "circle"
+            }
             size={10}
           />
           <span>
             {isRunning
               ? "COMPUTING"
               : errorMsg
-                ? "ERROR"
-                : coolingAnalysisResult
-                  ? "NOMINAL"
-                  : "READY"}
+              ? "ERROR"
+              : coolingAnalysisResult
+              ? "NOMINAL"
+              : "READY"}
           </span>
         </div>
         {errorMsg && (

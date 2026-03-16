@@ -9,6 +9,7 @@ from functools import partial
 
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from api.models.cooling_models import (
     CoolingAnalysisResponse,
@@ -61,7 +62,22 @@ async def design_channels(
 
     width_mm = geom.channel_width * 1e3
     height_mm = geom.channel_height * 1e3
+    rib_mm = geom.rib_width * 1e3
+    inner_r_mm = geom.y * 1e3
     aspect = np.where(geom.channel_width > 0, geom.channel_height / geom.channel_width, 0)
+    wall_thickness_mm_val = float(np.mean(geom.wall_thickness) * 1e3)
+
+    # Generate 3D channel figure
+    figure_3d = None
+    try:
+        from resa.visualization.engine_3d import Engine3DViewer
+        from resa.visualization.themes import DarkTheme
+
+        viewer = Engine3DViewer(theme=DarkTheme(), dark_mode=True)
+        fig3d = viewer.render_channels(geom, n_channels_to_show=4, resolution=40)
+        figure_3d = fig3d.to_json()
+    except Exception:
+        logger.warning("Could not generate 3D channel figure", exc_info=True)
 
     return CoolingChannelResponse(
         num_channels=geom.num_channels,
@@ -71,9 +87,13 @@ async def design_channels(
         max_channel_width_mm=float(np.max(width_mm)),
         min_aspect_ratio=float(np.min(aspect)),
         max_aspect_ratio=float(np.max(aspect)),
+        wall_thickness_mm_val=wall_thickness_mm_val,
         x_mm=(geom.x * 1e3).tolist(),
         channel_width_mm=width_mm.tolist(),
         channel_height_mm=height_mm.tolist(),
+        rib_width_mm=rib_mm.tolist(),
+        inner_radius_mm=inner_r_mm.tolist(),
+        figure_3d=figure_3d,
     )
 
 
@@ -140,3 +160,36 @@ async def analyze_cooling(
         coolant_pressure_bar=(result.P_coolant / 1e5).tolist(),
         warnings=warnings,
     )
+
+
+@router.get("/cross_section")
+async def get_cross_section(
+    session_id: str = Query(..., description="Design session ID"),
+    station_idx: int = Query(0, description="Axial station index"),
+):
+    """Return a Plotly cross-section figure for a specific axial station."""
+    session = session_manager.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+
+    channel_geom = session.get_result("cooling_channels")
+    if channel_geom is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No channel geometry available. Run /cooling/channels first.",
+        )
+
+    # Clamp station index to valid range
+    n_stations = len(channel_geom.x)
+    station_idx = max(0, min(station_idx, n_stations - 1))
+
+    try:
+        from resa.visualization.engine_plots import CrossSectionPlotter
+        from resa.visualization.themes import DarkTheme
+
+        plotter = CrossSectionPlotter(theme=DarkTheme())
+        fig = plotter.create_figure(channel_geom, station_idx=station_idx)
+        return JSONResponse(content={"figure": fig.to_json()})
+    except Exception as exc:
+        logger.exception("Cross-section figure generation failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

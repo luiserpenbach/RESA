@@ -34,6 +34,25 @@ class CoolingChannelConfig:
     # Optimization
     optimization_target: str = "none"  # 'none', 'min_dp', 'min_wall_temp', 'max_margin'
 
+    # Wall geometry overrides (None = use EngineConfig value)
+    wall_thickness_mm: Optional[float] = None     # hot wall thickness [mm]
+    rib_width_throat_mm: Optional[float] = None   # rib width at throat [mm]
+
+    # Axial margins for CAD import
+    start_margin_mm: float = 0.0  # channels begin this far from injector face [mm]
+    end_margin_mm: float = 0.0    # channels end this far before nozzle exit [mm]
+
+    # Surface roughness override (None = use EngineConfig value)
+    roughness_microns: Optional[float] = None
+
+    # Helix/spiral angle
+    helix_angle_deg: float = 0.0
+
+    # Coolant inlet overrides (None = use EngineConfig value)
+    coolant_p_in_bar: Optional[float] = None
+    coolant_t_in_k: Optional[float] = None
+    coolant_mass_fraction: Optional[float] = None
+
 
 @dataclass
 class WallThicknessConfig:

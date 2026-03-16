@@ -14,6 +14,25 @@ export interface CoolingChannelConfig {
   bifurcation_station_x: number;
   aspect_ratio_limit: number;
   optimization_target: "none" | "min_dp" | "min_wall_temp" | "max_margin";
+
+  // Wall geometry overrides (null = use engine config value)
+  wall_thickness_mm: number | null;
+  rib_width_throat_mm: number | null;
+
+  // Axial margins for CAD import
+  start_margin_mm: number;
+  end_margin_mm: number;
+
+  // Surface roughness override (null = use engine config value)
+  roughness_microns: number | null;
+
+  // Helix/spiral angle
+  helix_angle_deg: number;
+
+  // Coolant inlet overrides (null = use engine config value)
+  coolant_p_in_bar: number | null;
+  coolant_t_in_k: number | null;
+  coolant_mass_fraction: number | null;
 }
 
 export const DEFAULT_COOLING_CONFIG: CoolingChannelConfig = {
@@ -28,6 +47,15 @@ export const DEFAULT_COOLING_CONFIG: CoolingChannelConfig = {
   bifurcation_station_x: 0.0,
   aspect_ratio_limit: 10.0,
   optimization_target: "none",
+  wall_thickness_mm: null,
+  rib_width_throat_mm: null,
+  start_margin_mm: 0.0,
+  end_margin_mm: 0.0,
+  roughness_microns: null,
+  helix_angle_deg: 0.0,
+  coolant_p_in_bar: null,
+  coolant_t_in_k: null,
+  coolant_mass_fraction: null,
 };
 
 export interface CoolingChannelResponse {
@@ -38,9 +66,13 @@ export interface CoolingChannelResponse {
   max_channel_width_mm: number;
   min_aspect_ratio: number;
   max_aspect_ratio: number;
+  wall_thickness_mm_val: number;
   x_mm: number[];
   channel_width_mm: number[];
   channel_height_mm: number[];
+  rib_width_mm: number[];
+  inner_radius_mm: number[];
+  figure_3d: string | null;
 }
 
 export interface CoolingAnalysisResponse {
