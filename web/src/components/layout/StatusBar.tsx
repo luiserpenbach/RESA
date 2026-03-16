@@ -1,6 +1,8 @@
 import { Icon } from "@blueprintjs/core";
+import { useLocation } from "react-router-dom";
 import { useEngineStore } from "../../store/engineStore";
 import { useUiStore } from "../../store/uiStore";
+import { MODULE_DOCS } from "../../data/moduleDocs";
 
 interface StatusBarProps {
   isRunning: boolean;
@@ -16,7 +18,9 @@ function formatAgo(ts: number): string {
 
 export function StatusBar({ isRunning, error }: StatusBarProps) {
   const { lastDesignResult } = useEngineStore();
-  const { lastRunTime, lastRunDuration } = useUiStore();
+  const { lastRunTime, lastRunDuration, methodsPanelOpen, toggleMethodsPanel } = useUiStore();
+  const location = useLocation();
+  const hasModuleDocs = !!MODULE_DOCS[location.pathname];
 
   const warnings = lastDesignResult?.warnings?.length ?? 0;
   const r = lastDesignResult;
@@ -75,6 +79,17 @@ export function StatusBar({ isRunning, error }: StatusBarProps) {
       )}
 
       <div className="statusbar-spacer" />
+
+      {hasModuleDocs && (
+        <button
+          className={`statusbar-item statusbar-methods-btn clickable ${methodsPanelOpen ? "active" : ""}`}
+          onClick={toggleMethodsPanel}
+          title={methodsPanelOpen ? "Hide methods panel" : "Show key methods & equations"}
+        >
+          <Icon icon="function" size={10} />
+          <span>Methods</span>
+        </button>
+      )}
 
       <div className="statusbar-item">
         <Icon icon="flame" size={10} />

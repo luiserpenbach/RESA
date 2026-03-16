@@ -1,8 +1,10 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useUiStore } from "../../store/uiStore";
 import { NavigationSidebar } from "./NavigationSidebar";
+import { MethodsPanel } from "../common/MethodsPanel";
+import { MODULE_DOCS } from "../../data/moduleDocs";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -53,13 +55,17 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundary
  * App shell: NavigationSidebar | 3-panel grid (TopBar, LeftPanel, Workspace, RightPanel, StatusBar)
  */
 export function AppShell() {
-  const { sidebarCollapsed, rightPanelCollapsed, navCollapsed } = useUiStore();
+  const { sidebarCollapsed, rightPanelCollapsed, navCollapsed, methodsPanelOpen } = useUiStore();
+  const location = useLocation();
+  const hasModuleDocs = !!MODULE_DOCS[location.pathname];
 
   const gridCols = [
     sidebarCollapsed ? "0px" : "var(--panel-left)",
     "1fr",
     rightPanelCollapsed ? "0px" : "var(--panel-right)",
   ].join(" ");
+
+  const methodsHeight = methodsPanelOpen && hasModuleDocs ? 190 : 0;
 
   return (
     <div className="app-root">
@@ -68,12 +74,14 @@ export function AppShell() {
         className="app-shell"
         style={{
           gridTemplateColumns: gridCols,
-          transition: "grid-template-columns 180ms ease",
+          gridTemplateRows: `var(--topbar-height) 1fr ${methodsHeight}px var(--statusbar-height)`,
+          transition: "grid-template-columns 180ms ease, grid-template-rows 200ms ease",
         }}
       >
         <PageErrorBoundary>
           <Outlet />
         </PageErrorBoundary>
+        <MethodsPanel />
       </div>
     </div>
   );
