@@ -14,6 +14,11 @@ const MODULE_LABELS: Record<ModuleName, string> = {
   wall_thickness: "Wall Thickness",
   performance: "Performance Maps",
   feed_system: "Feed System",
+  monte_carlo: "Monte Carlo",
+  optimization: "Optimization",
+  injector: "Injector Design",
+  igniter: "Igniter Design",
+  tank: "Tank Simulation",
 };
 
 const MODULE_PATHS: Record<ModuleName, string> = {
@@ -24,6 +29,11 @@ const MODULE_PATHS: Record<ModuleName, string> = {
   wall_thickness: "/structural",
   performance: "/performance",
   feed_system: "/feed-system",
+  monte_carlo: "/monte-carlo",
+  optimization: "/optimization",
+  injector: "/injector",
+  igniter: "/igniter",
+  tank: "/tank",
 };
 
 interface ModuleGateProps {

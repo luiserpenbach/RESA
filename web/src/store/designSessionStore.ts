@@ -10,13 +10,18 @@ import { DEFAULT_WALL_THICKNESS_CONFIG } from "../types/structural";
 
 /** Downstream dependency graph */
 const DOWNSTREAM: Record<string, ModuleName[]> = {
-  engine: ["contour", "cooling_channels", "cooling", "wall_thickness", "performance", "feed_system"],
+  engine: ["contour", "cooling_channels", "cooling", "wall_thickness", "performance", "feed_system", "monte_carlo", "optimization"],
   contour: ["cooling_channels", "cooling", "wall_thickness"],
   cooling_channels: ["cooling", "wall_thickness"],
   cooling: ["wall_thickness"],
   wall_thickness: [],
   performance: [],
   feed_system: [],
+  monte_carlo: [],
+  optimization: [],
+  injector: [],
+  igniter: [],
+  tank: [],
 };
 
 interface DesignSessionState {
@@ -56,6 +61,11 @@ const INITIAL_STATUS: Record<ModuleName, ModuleStatus> = {
   wall_thickness: "locked",
   performance: "locked",
   feed_system: "locked",
+  monte_carlo: "locked",
+  optimization: "locked",
+  injector: "ready",
+  igniter: "ready",
+  tank: "ready",
 };
 
 export const useDesignSessionStore = create<DesignSessionState>((set, get) => ({

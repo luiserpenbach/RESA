@@ -10,6 +10,11 @@ const StructuralPage = lazy(() => import("./pages/StructuralPage"));
 const NozzleContourPage = lazy(() => import("./pages/NozzleContourPage"));
 const PerformancePage = lazy(() => import("./pages/PerformancePage"));
 const FeedSystemPage = lazy(() => import("./pages/FeedSystemPage"));
+const MonteCarloPage  = lazy(() => import("./pages/MonteCarloPage"));
+const OptimizationPage = lazy(() => import("./pages/OptimizationPage"));
+const InjectorPage    = lazy(() => import("./pages/InjectorPage"));
+const IgniterPage     = lazy(() => import("./pages/IgniterPage"));
+const TankPage        = lazy(() => import("./pages/TankPage"));
 
 function Loading() {
   return (
@@ -73,11 +78,11 @@ const routes: RouteObject[] = [
       { path: "contour",         element: withSuspense(<NozzleContourPage />) },
       { path: "performance",     element: withSuspense(<PerformancePage />) },
       { path: "feed-system",     element: withSuspense(<FeedSystemPage />) },
-      { path: "monte-carlo",     element: <ComingSoon name="Monte Carlo" /> },
-      { path: "optimization",    element: <ComingSoon name="Optimization" /> },
-      { path: "injector",        element: <ComingSoon name="Injector Design" /> },
-      { path: "igniter",         element: <ComingSoon name="Igniter Design" /> },
-      { path: "tank",            element: <ComingSoon name="Tank Simulation" /> },
+      { path: "monte-carlo",     element: withSuspense(<MonteCarloPage />) },
+      { path: "optimization",    element: withSuspense(<OptimizationPage />) },
+      { path: "injector",        element: withSuspense(<InjectorPage />) },
+      { path: "igniter",         element: withSuspense(<IgniterPage />) },
+      { path: "tank",            element: withSuspense(<TankPage />) },
       { path: "projects",        element: <ComingSoon name="Projects" /> },
       { path: "settings",        element: <ComingSoon name="Settings" /> },
     ],
