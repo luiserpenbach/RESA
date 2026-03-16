@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Icon } from "@blueprintjs/core";
 import { ModuleGate } from "../../components/common/ModuleGate";
 import { useDesignSessionStore } from "../../store/designSessionStore";
 import { useOptimizationMutation } from "../../api/optimization";
 import type { OptimizationConfig, OptimizationResponse, DesignVariableSpec } from "../../types/optimization";
 import { DEFAULT_OPTIMIZATION_CONFIG } from "../../types/optimization";
+import { PlotlyRenderer } from "../../components/plots/PlotlyRenderer";
 
 function extractError(err: unknown): string {
   if (err && typeof err === "object" && "response" in err) {
@@ -84,8 +85,28 @@ export default function OptimizationPage() {
     ...c, variables: c.variables.filter((_, idx) => idx !== i),
   }));
 
-  const historyRows = result ? result.history_iterations.map((iter, i) => ({ iter, obj: result.history_objective[i] })) : [];
-  const displayHistory = historyRows.filter((_, i) => i % Math.max(1, Math.floor(historyRows.length / 20)) === 0);
+  const convergenceFigure = useMemo(() => {
+    if (!result || result.history_iterations.length === 0) return null;
+    return JSON.stringify({
+      data: [{
+        type: "scatter",
+        mode: "lines+markers",
+        x: result.history_iterations,
+        y: result.history_objective,
+        name: config.objective,
+        line: { color: "#58a6ff", width: 2 },
+        marker: { size: 4, color: "#58a6ff" },
+      }],
+      layout: {
+        paper_bgcolor: "#0d1117",
+        plot_bgcolor: "#0d1117",
+        font: { color: "#c9d1d9", size: 11 },
+        margin: { t: 24, r: 16, b: 48, l: 64 },
+        xaxis: { gridcolor: "#21262d", zerolinecolor: "#21262d", title: "Iteration" },
+        yaxis: { gridcolor: "#21262d", zerolinecolor: "#21262d", title: config.objective },
+      },
+    });
+  }, [result, config.objective]);
 
   return (
     <ModuleGate requires={["engine"]}>
@@ -218,20 +239,7 @@ export default function OptimizationPage() {
               </div>
             )}
             {result && activeTab === "convergence" && (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                <thead><tr>
-                  <th style={thStyle}>Iteration</th>
-                  <th style={thStyle}>Objective</th>
-                </tr></thead>
-                <tbody>
-                  {displayHistory.map(({ iter, obj }) => (
-                    <tr key={iter}>
-                      <td style={tdStyle}>{iter}</td>
-                      <td style={tdStyle}>{obj.toFixed(5)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <PlotlyRenderer figureJson={convergenceFigure} loading={isRunning} height={420} />
             )}
           </div>
         </div>

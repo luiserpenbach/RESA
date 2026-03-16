@@ -1,4 +1,4 @@
-.PHONY: dev-api dev-web dev build install-api install-web
+.PHONY: dev-api dev-web dev build install-api install-web test-api lint format clean
 
 install-api:
 	pip install -e ".[dev]"
@@ -19,4 +19,16 @@ build:
 	cd web && npm run build
 
 test-api:
-	pytest api/ -v 2>/dev/null || echo "No api tests yet"
+	pytest api/tests/ -v
+
+lint:
+	ruff check .
+	black --check .
+
+format:
+	black .
+	ruff check --fix .
+
+clean:
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
+	find . -name "*.pyc" -delete 2>/dev/null; true
