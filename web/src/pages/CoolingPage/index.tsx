@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Icon } from "@blueprintjs/core";
 import { ModuleGate } from "../../components/common/ModuleGate";
 import { StaleDataBanner } from "../../components/common/StaleDataBanner";
+import { PlotlyRenderer } from "../../components/plots/PlotlyRenderer";
 import { useDesignSessionStore } from "../../store/designSessionStore";
 import { useDesignChannelsMutation, useAnalyzeCoolingMutation } from "../../api/cooling";
 import type { CoolingChannelConfig, CoolingChannelResponse, CoolingAnalysisResponse } from "../../types/cooling";
@@ -163,6 +164,42 @@ function CoolingWorkspace({
 }) {
   const tabs = ["channels", "thermal"];
 
+  // Build a Plotly figure JSON for the channel profile from the response arrays.
+  const channelFigureJson = useMemo(() => {
+    if (!channelResult || !channelResult.x_mm.length) return null;
+    return JSON.stringify({
+      data: [
+        {
+          type: "scatter",
+          x: channelResult.x_mm,
+          y: channelResult.channel_width_mm,
+          name: "Channel Width",
+          mode: "lines",
+          line: { color: "#4a9eff", width: 2 },
+          hovertemplate: "X: %{x:.1f} mm<br>Width: %{y:.3f} mm<extra></extra>",
+        },
+        {
+          type: "scatter",
+          x: channelResult.x_mm,
+          y: channelResult.channel_height_mm,
+          name: "Channel Height",
+          mode: "lines",
+          line: { color: "#2ecc71", width: 2 },
+          hovertemplate: "X: %{x:.1f} mm<br>Height: %{y:.3f} mm<extra></extra>",
+        },
+      ],
+      layout: {
+        xaxis: { title: "Axial Position [mm]", color: "#94a3b8", gridcolor: "#1f2d45" },
+        yaxis: { title: "Dimension [mm]", color: "#94a3b8", gridcolor: "#1f2d45" },
+        legend: { font: { color: "#94a3b8" } },
+        paper_bgcolor: "#111827",
+        plot_bgcolor: "#111827",
+        font: { color: "#e2e8f0", size: 11 },
+        margin: { l: 50, r: 20, t: 30, b: 50 },
+      },
+    });
+  }, [channelResult]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Tab bar */}
@@ -181,50 +218,17 @@ function CoolingWorkspace({
       {/* Tab content */}
       <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
         {activeTab === "channels" && channelResult && (
-          <div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
               {channelResult.num_channels} channels | {channelResult.channel_type} |{" "}
               {channelResult.height_profile} profile
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              Width range: {channelResult.min_channel_width_mm.toFixed(2)} -{" "}
-              {channelResult.max_channel_width_mm.toFixed(2)} mm
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              Aspect ratio: {channelResult.min_aspect_ratio.toFixed(1)} -{" "}
-              {channelResult.max_aspect_ratio.toFixed(1)}
-            </div>
+            <PlotlyRenderer figureJson={channelFigureJson} height={420} />
           </div>
         )}
 
-        {activeTab === "thermal" && analysisResult && analysisResult.figure_thermal && (
-          <div
-            style={{ width: "100%", height: "100%" }}
-            ref={(el) => {
-              if (el && analysisResult.figure_thermal) {
-                try {
-                  const Plotly = (window as unknown as { Plotly?: { newPlot: Function } }).Plotly;
-                  if (Plotly) {
-                    const fig = JSON.parse(analysisResult.figure_thermal);
-                    Plotly.newPlot(el, fig.data, {
-                      ...fig.layout,
-                      autosize: true,
-                      paper_bgcolor: "transparent",
-                      plot_bgcolor: "transparent",
-                    });
-                  }
-                } catch {
-                  /* ignore parse errors */
-                }
-              }
-            }}
-          />
-        )}
-
-        {activeTab === "thermal" && analysisResult && !analysisResult.figure_thermal && (
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Thermal results available. Max wall temp: {analysisResult.max_wall_temp_k.toFixed(0)} K
-          </div>
+        {activeTab === "thermal" && analysisResult && (
+          <PlotlyRenderer figureJson={analysisResult.figure_thermal} height={500} />
         )}
 
         {!channelResult && !analysisResult && (
