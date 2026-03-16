@@ -229,10 +229,10 @@ class DarkTheme(PlotTheme):
     danger: str = "#ff4d4d"        # vivid red
     info: str = "#1abc9c"          # teal
 
-    # Backgrounds — match Streamlit dark
-    background: str = "#0e1117"
-    paper_background: str = "#111827"
-    grid_color: str = "#1f2d45"
+    # Backgrounds — match RESA UI dark neutrals
+    background: str = "#111111"
+    paper_background: str = "#161616"
+    grid_color: str = "#252525"
 
     # Font colors
     font_family: str = "Inter, Arial, Helvetica, sans-serif"
@@ -300,20 +300,20 @@ class DarkTheme(PlotTheme):
             margin=self.margin,
             colorway=self.get_color_sequence(),
             legend=dict(
-                bgcolor="rgba(17,24,39,0.85)",
-                bordercolor="#1f2d45",
+                bgcolor="rgba(22,22,22,0.85)",
+                bordercolor="#2e2e2e",
                 borderwidth=1,
-                font=dict(color="#c8d6e5", size=11),
+                font=dict(color="#a0a0a0", size=11),
             ),
         )
 
         # Axes
         axis_style = dict(
-            title_font=dict(size=self.axis_title_size, color="#7ba7cc"),
-            tickfont=dict(size=self.tick_size, color="#7ba7cc"),
+            title_font=dict(size=self.axis_title_size, color="#a0a0a0"),
+            tickfont=dict(size=self.tick_size, color="#a0a0a0"),
             gridcolor=self.grid_color,
-            linecolor="#1f2d45",
-            zerolinecolor="#2a3f5c",
+            linecolor="#2e2e2e",
+            zerolinecolor="#383838",
             showgrid=True,
             gridwidth=1,
         )

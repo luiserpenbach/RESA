@@ -29,8 +29,8 @@
 
   /* Typography */
   --text-primary:   #e2e2e2;
-  --text-secondary: #7a7a7a;
-  --text-muted:     #3d3d3d;
+  --text-secondary: #a0a0a0;
+  --text-muted:     #686868;
   --text-data:      #9bb5f8;   /* soft periwinkle for numeric values */
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -227,7 +227,7 @@ body {
 .app-nav {
   width: 220px;
   min-width: 220px;
-  background: #060f1a;
+  background: #0d0d0d;
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -286,10 +286,14 @@ body {
 }
 
 .app-nav .bp5-tree-node-selected > .bp5-tree-node-content {
-  background: rgba(123, 167, 204, 0.12);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .app-nav .bp5-tree-node-selected > .bp5-tree-node-content .bp5-tree-node-label span {
+  color: var(--text-primary);
+}
+
+.app-nav .bp5-tree-node-selected > .bp5-tree-node-content .bp5-icon {
   color: var(--accent-bright);
 }
 
@@ -647,6 +651,8 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
+  background: transparent;
+  border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
   transition: color 120ms;
@@ -998,4 +1004,92 @@ code {
   max-width: 280px;
   text-align: center;
   line-height: 1.6;
+}
+
+/* ─── Form utility classes (used across all module pages) ─────────────────── */
+.form-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.form-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: border-color 120ms;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.form-select {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 120ms;
+  box-sizing: border-box;
+  appearance: auto;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* ─── Parameter table (compact label | input two-column layout) ──────────── */
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.param-table td {
+  padding: 4px 0;
+  vertical-align: middle;
+}
+
+.param-table .param-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  padding-right: 12px;
+  width: 50%;
+  font-size: 11px;
+}
+
+.param-table .param-value {
+  width: 50%;
+}
+
+.param-section-header {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  margin: 14px 0 6px;
+  opacity: 0.8;
 }

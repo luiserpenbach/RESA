@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Icon } from "@blueprintjs/core";
 import { ModuleGate } from "../../components/common/ModuleGate";
 import { StaleDataBanner } from "../../components/common/StaleDataBanner";
@@ -16,6 +16,19 @@ function extractError(err: unknown): string {
   return "Wall thickness analysis failed.";
 }
 
+const structInputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 26,
+  padding: "0 7px",
+  background: "var(--bg-base)",
+  border: "1px solid var(--border-default)",
+  borderRadius: "var(--radius-sm)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--font-mono)",
+  fontSize: 12,
+  boxSizing: "border-box" as const,
+};
+
 function StructuralConfigForm({
   config,
   onChange,
@@ -31,64 +44,66 @@ function StructuralConfigForm({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Material */}
-      <div>
-        <label className="form-label">Material</label>
-        <select
-          className="form-select"
-          value={config.material_name}
-          onChange={(e) => onChange({ material_name: e.target.value })}
-        >
-          {Object.entries(materials).map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <table className="param-table">
+        <tbody>
+          <tr>
+            <td className="param-label">Material</td>
+            <td className="param-value">
+              <select
+                className="form-select"
+                value={config.material_name}
+                onChange={(e) => onChange({ material_name: e.target.value })}
+              >
+                {Object.entries(materials).map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">SF Pressure</td>
+            <td className="param-value">
+              <input
+                style={structInputStyle}
+                type="number"
+                step="0.1"
+                value={config.safety_factor_pressure}
+                onChange={(e) => onChange({ safety_factor_pressure: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">SF Thermal</td>
+            <td className="param-value">
+              <input
+                style={structInputStyle}
+                type="number"
+                step="0.1"
+                value={config.safety_factor_thermal}
+                onChange={(e) => onChange({ safety_factor_thermal: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Design Life [cycles]</td>
+            <td className="param-value">
+              <input
+                style={structInputStyle}
+                type="number"
+                step="10"
+                value={config.design_life_cycles}
+                onChange={(e) => onChange({ design_life_cycles: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      {/* Safety factor - pressure */}
-      <div>
-        <label className="form-label">SF Pressure</label>
-        <input
-          className="form-input"
-          type="number"
-          step="0.1"
-          value={config.safety_factor_pressure}
-          onChange={(e) => onChange({ safety_factor_pressure: Number(e.target.value) })}
-        />
-      </div>
-
-      {/* Safety factor - thermal */}
-      <div>
-        <label className="form-label">SF Thermal</label>
-        <input
-          className="form-input"
-          type="number"
-          step="0.1"
-          value={config.safety_factor_thermal}
-          onChange={(e) => onChange({ safety_factor_thermal: Number(e.target.value) })}
-        />
-      </div>
-
-      {/* Design life */}
-      <div>
-        <label className="form-label">Design Life [cycles]</label>
-        <input
-          className="form-input"
-          type="number"
-          step="10"
-          value={config.design_life_cycles}
-          onChange={(e) => onChange({ design_life_cycles: Number(e.target.value) })}
-        />
-      </div>
-
-      {/* Run button */}
       <button
         className={`run-btn ${isRunning ? "is-running" : ""}`}
         onClick={onRun}
         disabled={isRunning}
-        style={{ marginTop: 12, width: "100%" }}
+        style={{ marginTop: 4, width: "100%" }}
       >
         <Icon icon={isRunning ? "dot" : "play"} size={12} />
         {isRunning ? "COMPUTING..." : "RUN ANALYSIS"}

@@ -170,78 +170,104 @@ def _build_contour_figure(
     try:
         import plotly.graph_objects as go
 
+        BG = "#111111"
+        GRID = "#252525"
+        WALL_COLOR = "#c0c8d4"
+        FILL_COLOR = "rgba(74, 158, 255, 0.08)"
+        AXIS_COLOR = "#a0a0a0"
+
         fig = go.Figure()
 
-        if x_chamber_mm:
-            fig.add_trace(
-                go.Scatter(
-                    x=x_chamber_mm,
-                    y=y_chamber_mm,
-                    mode="lines",
-                    name="Chamber",
-                    line=dict(color="#1f77b4", width=2),
-                )
-            )
-            # Mirror
-            fig.add_trace(
-                go.Scatter(
-                    x=x_chamber_mm,
-                    y=[-v for v in y_chamber_mm],
-                    mode="lines",
-                    name="Chamber",
-                    line=dict(color="#1f77b4", width=2),
-                    showlegend=False,
-                )
-            )
+        # Draw wall fill (upper)
+        fig.add_trace(go.Scatter(
+            x=x_full_mm + x_full_mm[::-1],
+            y=y_full_mm + [0.0] * len(y_full_mm),
+            fill="toself",
+            fillcolor=FILL_COLOR,
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
 
-        if x_convergent_mm:
-            fig.add_trace(
-                go.Scatter(
-                    x=x_convergent_mm,
-                    y=y_convergent_mm,
-                    mode="lines",
-                    name="Convergent",
-                    line=dict(color="#ff7f0e", width=2),
-                )
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_convergent_mm,
-                    y=[-v for v in y_convergent_mm],
-                    mode="lines",
-                    name="Convergent",
-                    line=dict(color="#ff7f0e", width=2),
-                    showlegend=False,
-                )
-            )
+        # Draw wall fill (lower)
+        fig.add_trace(go.Scatter(
+            x=x_full_mm + x_full_mm[::-1],
+            y=[-v for v in y_full_mm] + [0.0] * len(y_full_mm),
+            fill="toself",
+            fillcolor=FILL_COLOR,
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
 
-        if x_divergent_mm:
-            fig.add_trace(
-                go.Scatter(
-                    x=x_divergent_mm,
-                    y=y_divergent_mm,
-                    mode="lines",
-                    name="Divergent",
-                    line=dict(color="#2ca02c", width=2),
-                )
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_divergent_mm,
-                    y=[-v for v in y_divergent_mm],
-                    mode="lines",
-                    name="Divergent",
-                    line=dict(color="#2ca02c", width=2),
-                    showlegend=False,
-                )
-            )
+        # Draw full upper wall as single trace (no gaps)
+        fig.add_trace(go.Scatter(
+            x=x_full_mm,
+            y=y_full_mm,
+            mode="lines",
+            name="Wall",
+            line=dict(color=WALL_COLOR, width=2),
+            hovertemplate="x=%{x:.1f} mm  r=%{y:.2f} mm<extra></extra>",
+        ))
+
+        # Draw full lower wall (mirror)
+        fig.add_trace(go.Scatter(
+            x=x_full_mm,
+            y=[-v for v in y_full_mm],
+            mode="lines",
+            showlegend=False,
+            line=dict(color=WALL_COLOR, width=2),
+            hoverinfo="skip",
+        ))
+
+        # Centreline
+        if x_full_mm:
+            fig.add_trace(go.Scatter(
+                x=[x_full_mm[0], x_full_mm[-1]],
+                y=[0, 0],
+                mode="lines",
+                showlegend=False,
+                line=dict(color="rgba(160,160,160,0.3)", width=1, dash="dash"),
+                hoverinfo="skip",
+            ))
 
         fig.update_layout(
-            title="Nozzle Contour",
-            xaxis_title="Axial Position [mm]",
-            yaxis_title="Radial Position [mm]",
-            yaxis=dict(scaleanchor="x", scaleratio=1),
-            template="plotly_white",
+            title=dict(
+                text="Nozzle Contour",
+                x=0.5,
+                font=dict(size=13, color="#e2e2e2"),
+            ),
+            xaxis=dict(
+                title=dict(text="Axial Position [mm]", font=dict(color=AXIS_COLOR)),
+                tickfont=dict(color=AXIS_COLOR),
+                gridcolor=GRID,
+                linecolor="#2e2e2e",
+                zerolinecolor="#2e2e2e",
+                showgrid=True,
+                gridwidth=1,
+            ),
+            yaxis=dict(
+                title=dict(text="Radial Position [mm]", font=dict(color=AXIS_COLOR)),
+                tickfont=dict(color=AXIS_COLOR),
+                gridcolor=GRID,
+                linecolor="#2e2e2e",
+                zerolinecolor="#2e2e2e",
+                showgrid=True,
+                gridwidth=1,
+                scaleanchor="x",
+                scaleratio=1,
+            ),
+            paper_bgcolor=BG,
+            plot_bgcolor=BG,
+            font=dict(color="#e2e2e2", size=11),
+            legend=dict(
+                bgcolor="rgba(22,22,22,0.85)",
+                bordercolor="#2e2e2e",
+                borderwidth=1,
+                font=dict(color="#a0a0a0", size=11),
+            ),
+            margin=dict(l=55, r=20, t=50, b=50),
+            hovermode="x unified",
         )
 
         return fig.to_json()
@@ -255,8 +281,18 @@ def _build_3d_figure(nozzle_geom) -> Optional[str]:
     try:
         from resa.visualization.engine_3d import Engine3DViewer
 
-        viewer = Engine3DViewer()
+        viewer = Engine3DViewer(dark_mode=True)
         fig = viewer.render_nozzle(nozzle_geom)
+
+        # Apply transparent paper background so the plot blends with the UI
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            scene=dict(
+                xaxis=dict(backgroundcolor="rgba(17,17,17,0.5)"),
+                yaxis=dict(backgroundcolor="rgba(17,17,17,0.5)"),
+                zaxis=dict(backgroundcolor="rgba(17,17,17,0.5)"),
+            ),
+        )
         return fig.to_json()
     except Exception:
         logger.warning("Failed to generate 3D figure", exc_info=True)
