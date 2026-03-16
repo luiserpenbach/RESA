@@ -11,7 +11,7 @@
 
 ```
 RESA/
-├── resa/                          # Main package (v2.0)
+├── resa/                          # Main package (v2.0) — 72 Python files, ~25k lines
 │   ├── __init__.py                # Public API exports
 │   ├── core/                      # Configuration, results, interfaces, exceptions
 │   │   ├── config.py              # EngineConfig dataclass, YAML loading, validation
@@ -25,7 +25,7 @@ RESA/
 │   ├── physics/                   # Pure physics calculations (no side effects)
 │   │   ├── isentropic.py          # Isentropic flow relations, Mach calculations
 │   │   ├── heat_transfer.py       # Bartz equation, adiabatic wall temperature
-│   │   ├── cooling_n2o.py         # N2O cooling with boiling physics
+│   │   ├── cooling_n2o.py         # N2O cooling with two-phase boiling physics (~1.5k lines)
 │   │   ├── fluids.py              # CoolProp fluid property provider
 │   │   ├── performance.py         # Engine performance calculations
 │   │   ├── structural.py          # Structural analysis (chamber/nozzle wall)
@@ -40,8 +40,8 @@ RESA/
 │   │   ├── nozzle.py              # Rao bell nozzle contour generation
 │   │   └── cooling_channels.py    # Cooling channel geometry
 │   ├── addons/                    # Specialized design modules
-│   │   ├── igniter/               # Torch igniter sizing (CEA, chamber, HEM)
-│   │   ├── injector/              # Swirl injector design (LCSC/GCSC)
+│   │   ├── igniter/               # Torch igniter sizing (CEA, chamber, HEM two-phase)
+│   │   ├── injector/              # Swirl injector design (LCSC/GCSC models)
 │   │   ├── contour/               # 3D nozzle contour and STL/DXF export
 │   │   └── tank/                  # Tank pressurization and depletion simulation
 │   ├── analysis/                  # Statistical and optimization tools
@@ -64,41 +64,92 @@ RESA/
 │       ├── project.py             # Project container
 │       ├── version_control.py     # Git-based design versioning
 │       └── output_manager.py      # Output file organization
-├── api/                           # FastAPI REST API
-│   ├── main.py                    # App entry point (serves React build at /)
-│   ├── routers/                   # API route handlers
-│   │   ├── engine.py              # Engine design endpoints
-│   │   ├── cooling.py             # Cooling analysis endpoints
-│   │   ├── nozzle_contour.py      # Nozzle contour endpoints
-│   │   ├── performance.py         # Performance analysis endpoints
-│   │   ├── structural.py          # Structural analysis endpoints
-│   │   ├── feed_system.py         # Feed system endpoints
-│   │   ├── session.py             # Session management endpoints
-│   │   └── config_io.py           # Config import/export
-│   ├── models/                    # Pydantic request/response models
+├── api/                           # FastAPI REST API — 42 Python files, ~3.4k lines
+│   ├── main.py                    # App entry point (serves React build at /, API at /api/v1)
+│   ├── routers/                   # API route handlers (13 routers)
+│   │   ├── engine.py              # /engine/design, /engine/run
+│   │   ├── cooling.py             # /cooling/analyze
+│   │   ├── nozzle_contour.py      # /contour/generate
+│   │   ├── performance.py         # /performance/analyze
+│   │   ├── structural.py          # /structural/analyze
+│   │   ├── feed_system.py         # /feed-system/analyze
+│   │   ├── igniter.py             # /igniter/design
+│   │   ├── injector.py            # /injector/design
+│   │   ├── tank.py                # /tank/simulate
+│   │   ├── monte_carlo.py         # /analysis/monte-carlo
+│   │   ├── optimization.py        # /analysis/optimize
+│   │   ├── session.py             # /session/... (state management)
+│   │   └── config_io.py           # /config/import, /config/export
+│   ├── models/                    # Pydantic v2 request/response models
 │   │   ├── engine_models.py
 │   │   ├── cooling_models.py
 │   │   ├── contour_models.py
 │   │   ├── performance_models.py
 │   │   ├── feed_system_models.py
 │   │   ├── structural_models.py
-│   │   └── session_models.py
-│   └── services/                  # Utility services
-│       ├── serialization.py       # JSON/YAML serialization
-│       └── session_manager.py     # Session state management
-├── web/                           # React frontend (Vite + TypeScript, served by FastAPI)
+│   │   ├── session_models.py
+│   │   ├── igniter_models.py
+│   │   ├── injector_models.py
+│   │   ├── tank_models.py
+│   │   ├── monte_carlo_models.py
+│   │   └── optimization_models.py
+│   ├── services/                  # Utility services
+│   │   ├── serialization.py       # JSON/YAML serialization
+│   │   └── session_manager.py     # Session state management
+│   └── tests/                     # pytest API tests (primary test location)
+│       ├── conftest.py            # Shared fixtures
+│       ├── test_health.py
+│       ├── test_engine.py
+│       ├── test_session.py
+│       ├── test_monte_carlo.py
+│       ├── test_igniter.py
+│       ├── test_injector.py
+│       ├── test_tank.py
+│       └── test_optimization.py
+├── web/                           # React + TypeScript frontend (Vite, served by FastAPI)
+│   ├── package.json               # React 18, TypeScript 5.4, Vite 5.2, Blueprint.js
+│   ├── vite.config.ts
+│   └── src/
+│       ├── api/                   # Axios-based API client functions
+│       ├── types/                 # TypeScript type definitions (12 files matching backend)
+│       ├── components/
+│       │   ├── layout/            # TopBar, NavigationSidebar, StatusBar
+│       │   ├── forms/             # Input forms
+│       │   ├── plots/             # Plotly rendering wrapper
+│       │   ├── metrics/           # KPI display components
+│       │   ├── common/            # ErrorCallout, LoadingOverlay, StaleDataWarning
+│       │   ├── workspace/         # Parameter panels, schematic view
+│       │   └── ui/                # CommandPalette
+│       ├── pages/                 # 11 design module pages
+│       │   ├── EnginePage/
+│       │   ├── CoolingPage/       # Includes 3D channel view + cross-section slider
+│       │   ├── PerformancePage/
+│       │   ├── StructuralPage/
+│       │   ├── FeedSystemPage/
+│       │   ├── NozzleContourPage/
+│       │   ├── IgniterPage/
+│       │   ├── InjectorPage/
+│       │   ├── TankPage/
+│       │   ├── MonteCarloPage/
+│       │   └── OptimizationPage/
+│       ├── store/                 # Zustand state management
+│       ├── App.tsx
+│       └── main.tsx
+├── .github/
+│   └── workflows/
+│       └── ci.yml                 # CI: API tests (Python 3.11) + web build (Node 20)
 ├── examples/                      # Example scripts
 │   ├── new_architecture_demo.py   # v2.0 architecture showcase
 │   └── 2KN_Ethanox_example.py     # Simple 2kN engine design
 ├── docs/                          # Documentation
-├── Makefile                       # Build automation (dev-api, dev-web, build, test-api)
+├── Makefile                       # Build automation
+├── pyproject.toml                 # Package configuration and tool settings
+├── README.md                      # Project documentation
 ├── rocket_engine/                 # Legacy code (pre-v2.0, being replaced)
 ├── swirl_injector/                # Swirl injector standalone tool
-├── torch_igniter_advanced/        # Torch igniter module + tests
+├── torch_igniter_advanced/        # Torch igniter module + legacy tests
 ├── advanced_contour_design/       # 3D nozzle design tools
-├── fluid_lib/                     # Fluid dynamics libraries
-├── pyproject.toml                 # Package configuration and tool settings
-└── README.md                      # Project documentation
+└── fluid_lib/                     # Fluid dynamics libraries
 ```
 
 ## Build & Development
@@ -116,10 +167,11 @@ pip install -e ".[dev]"
 ### Running the Application
 
 ```bash
-# FastAPI + React (full-stack)
+# FastAPI + React (full-stack) — single server
 uvicorn api.main:app --reload --port 8000
-# Then open http://localhost:8000 (serves React build)
+# Open http://localhost:8000 (serves React build)
 # API docs at http://localhost:8000/docs
+# All API routes under /api/v1 prefix
 ```
 
 Using the Makefile:
@@ -129,16 +181,22 @@ make install-api   # pip install -e ".[dev]"
 make install-web   # cd web && npm install
 make dev           # run API + web dev servers in parallel
 make build         # build React frontend (web/dist/)
-make test-api      # run API tests
+make test-api      # run API tests (pytest api/tests/)
+make lint          # ruff check . && black --check .
+make format        # black . && ruff check --fix .
+make clean         # remove __pycache__ and .pyc files
 ```
 
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (api/tests/ + torch_igniter_advanced/)
 pytest
 
-# Existing test files are in torch_igniter_advanced/
+# API tests only (primary test suite)
+pytest api/tests/ -v
+
+# Legacy igniter tests
 pytest torch_igniter_advanced/
 
 # With coverage
@@ -150,14 +208,23 @@ pytest --cov=resa
 ```bash
 # Formatting (line length 100)
 black --check .
+black .
 
 # Linting
 ruff check .
+ruff check --fix .
 ```
 
 **Configured tools (pyproject.toml):**
 - **Black**: line-length=100, target py39-py311
-- **Ruff**: rules E, F, W, I; ignores E501
+- **Ruff**: rules E, F, W, I; ignores E501 (line-length already enforced by Black)
+- **pytest**: testpaths = ["api/tests", "torch_igniter_advanced"], asyncio_mode = "auto"
+
+### CI/CD Pipeline
+
+`.github/workflows/ci.yml` runs on every push/PR:
+- **api-tests**: Python 3.11, `pytest api/tests/ -v --tb=short`, `black --check .`, `ruff check .`
+- **web-build**: Node 20, `npm ci`, `tsc` (TypeScript), `vite build`
 
 ## Architecture & Design Patterns
 
@@ -168,6 +235,21 @@ ruff check .
 3. **Immutable Results** - All result dataclasses use `@dataclass(frozen=True)`.
 4. **Interface Contracts** - Abstract base classes in `core/interfaces.py` define contracts (`Solver`, `CombustionSolver`, `CoolingSolver`, `FluidProvider`, `GeometryGenerator`, `Plotter`, `ReportGenerator`).
 5. **Custom Exception Hierarchy** - All exceptions inherit from `RESAError` and carry contextual metadata (iterations, residuals, temperatures, pressures).
+
+### Dependency Direction (strictly enforced)
+
+```
+core       → (no imports from resa/)
+physics    → core
+solvers    → core + physics
+geometry   → core + physics
+addons     → core + physics + solvers + geometry
+analysis   → core + physics + solvers
+visualization → core + results (never import solvers directly)
+reporting  → core + results + visualization
+api/       → resa package (external consumer, not part of resa/)
+web/       → api/ via HTTP only
+```
 
 ### Data Flow
 
@@ -202,9 +284,11 @@ Units convention in field names:
 - **CoolProp** - Real fluid thermodynamic properties
 - **Plotly** - Interactive visualizations
 - **NumPy/SciPy** - Numerical computing
+- **pandas** - Data tables for analysis results
 - **numpy-stl** - STL geometry export
 - **FastAPI** + **Uvicorn** - REST API server
-- **Pydantic** - API request/response validation (v2)
+- **Pydantic v2** - API request/response validation
+- **React 18 + TypeScript 5.4** - Frontend (Blueprint.js UI, Zustand state, Axios, React Query)
 
 ## Code Conventions
 
@@ -285,8 +369,10 @@ Important public exports (from `resa/__init__.py`):
 3. **Result types** must be frozen dataclasses (`@dataclass(frozen=True)`).
 4. **New addons** go in `resa/addons/<module_name>/` and should implement `AnalysisModule` for UI integration.
 5. **Visualization** code goes in `resa/visualization/` using Plotly and the `PlotTheme` system.
-6. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`reporting` depend on everything above but never the reverse. `api/` depends on the `resa` package but is not part of it.
-8. **REST API** (`api/`) uses FastAPI and Pydantic v2. Routers live in `api/routers/`, models in `api/models/`, services in `api/services/`. The server also serves the compiled React frontend from `web/dist/`.
-9. **Legacy directories** (`rocket_engine/`, `fluid_lib/`, `swirl_injector/`, `torch_igniter_advanced/`, `advanced_contour_design/`) contain older code being migrated into the `resa/` package. New development should go in `resa/`.
-10. **Test files** currently live in `torch_igniter_advanced/`. New tests should use `pytest` conventions and target `resa/` package code.
-11. **Format code** with Black (line-length 100) and lint with Ruff before committing.
+6. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`reporting` depend on everything above but never the reverse.
+7. **New API endpoints**: Add a router in `api/routers/`, Pydantic models in `api/models/`, and register the router in `api/main.py`. Mirror the pattern of existing routers.
+8. **REST API** (`api/`) uses FastAPI and Pydantic v2. Routers live in `api/routers/`, models in `api/models/`, services in `api/services/`. The server serves the compiled React frontend from `web/dist/` and API routes at `/api/v1`.
+9. **Frontend changes**: TypeScript types in `web/src/types/` must match backend Pydantic models. UI pages live in `web/src/pages/<FeatureName>Page/`. Build with `make build` before testing the full-stack.
+10. **Legacy directories** (`rocket_engine/`, `fluid_lib/`, `swirl_injector/`, `torch_igniter_advanced/`, `advanced_contour_design/`) contain older code being migrated into the `resa/` package. New development should go in `resa/`.
+11. **Test files**: Primary tests are in `api/tests/` (integration tests for each router). Legacy tests are in `torch_igniter_advanced/`. New tests should use `pytest` conventions and target `resa/` package code.
+12. **Format code** with Black (line-length 100) and lint with Ruff before committing. Run `make lint` to check.
