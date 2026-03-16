@@ -11,14 +11,15 @@ All visualizations use Plotly's WebGL-accelerated 3D graphics
 for smooth interactivity and easy HTML export.
 """
 
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+
 import numpy as np
 import plotly.graph_objects as go
-from typing import Optional, Dict, Any, Tuple, List, Union, TYPE_CHECKING
 
-from resa.visualization.themes import PlotTheme, EngineeringTheme, DarkTheme, DEFAULT_THEME
+from resa.visualization.themes import DEFAULT_THEME, DarkTheme, PlotTheme
 
 if TYPE_CHECKING:
-    from resa.core.results import NozzleGeometry, CoolingChannelGeometry
+    from resa.core.results import CoolingChannelGeometry
 
 
 class Engine3DViewer:
@@ -366,6 +367,150 @@ class Engine3DViewer:
             x_label='Axial Position [mm]',
             y_label='Y [mm]',
             z_label='Z [mm]'
+        )
+
+        return fig
+
+    def render_single_channel_thermal(
+        self,
+        channel_geometry: 'CoolingChannelGeometry',
+        temperature_data: np.ndarray,
+        colorbar_title: str = 'T_wall_hot [K]',
+        n_turns: Optional[float] = None,
+        show_nozzle_shell: bool = True,
+        title: Optional[str] = None,
+    ) -> go.Figure:
+        """
+        Render one cooling channel as a helix colored by temperature (or heat flux).
+
+        The channel follows the nozzle contour as a spiral, colored per-station by
+        the supplied scalar field.  The faint translucent liner behind it gives the
+        shape context without cluttering the thermal data.
+
+        Args:
+            channel_geometry: CoolingChannelGeometry (x, y, wall/channel arrays)
+            temperature_data: Per-station values for color (same length as geo.x)
+            colorbar_title: Colorbar label, e.g. "T_wall_hot [K]"
+            n_turns: Number of helix revolutions. Defaults to 1.5 when helix_angle
+                     is zero, otherwise derived from geo.helix_angle.
+            show_nozzle_shell: If True, add translucent nozzle liner for context
+            title: Optional plot title
+
+        Returns:
+            Plotly Figure with 3D thermal channel visualization
+        """
+        geo = channel_geometry
+
+        # Downsample to ~200 points for smooth rendering without lag
+        n_pts = min(len(geo.x), 200)
+        step = max(1, len(geo.x) // n_pts)
+        idx = np.arange(0, len(geo.x), step)
+
+        xs = geo.x[idx]                    # [m]
+        rs_inner = geo.y[idx]              # [m]
+        t_wall = geo.wall_thickness[idx]   # [m]
+        h_ch = geo.channel_height[idx]     # [m]
+        r_center = rs_inner + t_wall + h_ch * 0.5  # channel centerline radius [m]
+
+        # --- Helix angle → cumulative theta ---
+        helix = (
+            geo.helix_angle[idx]
+            if (geo.helix_angle is not None and np.any(geo.helix_angle != 0))
+            else None
+        )
+        if n_turns is not None:
+            theta = np.linspace(0.0, 2.0 * np.pi * n_turns, len(xs))
+        elif helix is not None:
+            dx = np.diff(xs, prepend=xs[0])
+            dtheta = np.tan(helix) * np.abs(dx) / np.maximum(r_center, 1e-6)
+            theta = np.cumsum(dtheta)
+        else:
+            theta = np.linspace(0.0, 2.0 * np.pi * 1.5, len(xs))  # default 1.5 turns
+
+        # Cartesian coordinates in mm
+        X = xs * 1000.0
+        Y = r_center * np.cos(theta) * 1000.0
+        Z = r_center * np.sin(theta) * 1000.0
+
+        # Interpolate temperature data onto the downsampled grid
+        if len(temperature_data) != len(geo.x):
+            t_full = np.interp(
+                np.linspace(0, 1, len(geo.x)),
+                np.linspace(0, 1, len(temperature_data)),
+                temperature_data,
+            )
+        else:
+            t_full = temperature_data
+        temp = t_full[idx]
+        t_min = float(np.nanmin(temp))
+        t_max = float(np.nanmax(temp))
+
+        fig = go.Figure()
+
+        # 1. Translucent liner shell for geometry context
+        if show_nozzle_shell:
+            X_sh, Y_sh, Z_sh = self._create_surface_of_revolution(
+                X, rs_inner * 1000.0, n_theta=60, theta_end=2.0 * np.pi
+            )
+            fig.add_trace(self._mesh3d_from_surface(
+                X_sh, Y_sh, Z_sh,
+                color=self.theme.copper,
+                opacity=0.12,
+                name='Nozzle Liner',
+            ))
+
+        # 2. Helical channel line colored by temperature
+        fig.add_trace(go.Scatter3d(
+            x=X, y=Y, z=Z,
+            mode='lines',
+            line=dict(
+                color=temp,
+                colorscale=self.theme.temperature_colorscale,
+                width=7,
+                cmin=t_min,
+                cmax=t_max,
+                colorbar=dict(
+                    title=dict(text=colorbar_title, side='right'),
+                    thickness=15,
+                    len=0.65,
+                    x=1.02,
+                    tickfont=dict(size=10),
+                ),
+            ),
+            name='Channel',
+            customdata=temp,
+            hovertemplate=(
+                'X: %{x:.1f} mm<br>'
+                + colorbar_title.split('[')[0].strip()
+                + ': %{customdata:.0f}<extra></extra>'
+            ),
+        ))
+
+        # 3. Throat marker (minimum radius station)
+        ti = int(np.argmin(rs_inner))
+        fig.add_trace(go.Scatter3d(
+            x=[X[ti]], y=[Y[ti]], z=[Z[ti]],
+            mode='markers+text',
+            marker=dict(
+                size=9, color=self.theme.danger, symbol='diamond',
+                line=dict(color='white', width=1),
+            ),
+            text=['Throat'],
+            textfont=dict(
+                color='#ffffff' if self.dark_mode else '#222222',
+                size=10,
+            ),
+            textposition='top center',
+            showlegend=False,
+            hoverinfo='skip',
+        ))
+
+        self._apply_3d_layout(
+            fig,
+            title=title or f'Cooling Channel — {colorbar_title}',
+            x_label='Axial Position [mm]',
+            y_label='Y [mm]',
+            z_label='Z [mm]',
         )
 
         return fig

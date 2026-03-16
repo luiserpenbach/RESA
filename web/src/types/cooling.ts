@@ -101,4 +101,5 @@ export interface CoolingAnalysisResponse {
   density_kg_m3: number[] | null;
   figure_t_rho: string | null;
   figure_p_t: string | null;
+  figure_3d_thermal: string | null;
 }
