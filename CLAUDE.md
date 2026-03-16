@@ -58,21 +58,6 @@ RESA/
 │   │   └── themes.py              # Centralized PlotTheme system
 │   ├── reporting/                 # Report generation
 │   │   └── html_report.py         # Professional HTML reports with embedded Plotly
-│   ├── ui/                        # Streamlit application
-│   │   ├── app.py                 # Main Streamlit entry point
-│   │   └── pages/                 # UI pages (12 pages)
-│   │       ├── design_page.py     # Main engine design interface
-│   │       ├── cooling_page.py    # Regenerative cooling analysis
-│   │       ├── n2o_cooling_page.py # N2O-specific cooling analysis
-│   │       ├── contour_page.py    # 3D nozzle contour design
-│   │       ├── igniter_page.py    # Torch igniter sizing
-│   │       ├── injector_page.py   # Swirl injector design
-│   │       ├── tank_page.py       # Tank pressurization simulation
-│   │       ├── throttle_page.py   # Throttle analysis
-│   │       ├── optimization_page.py # Design optimization
-│   │       ├── monte_carlo_page.py  # MC uncertainty analysis
-│   │       ├── analysis_page.py   # General analysis
-│   │       └── projects_page.py   # Project management & version control
 │   ├── config/                    # Configuration defaults and utilities
 │   │   └── engine_config.py       # Default values and config helpers
 │   └── projects/                  # Project and version management
@@ -131,12 +116,6 @@ pip install -e ".[dev]"
 ### Running the Application
 
 ```bash
-# Streamlit UI
-streamlit run resa/ui/app.py
-
-# Or via entry point after install
-resa
-
 # FastAPI + React (full-stack)
 uvicorn api.main:app --reload --port 8000
 # Then open http://localhost:8000 (serves React build)
@@ -222,7 +201,6 @@ Units convention in field names:
 - **RocketCEA** (`rocketcea`) - NASA CEA equilibrium combustion calculations
 - **CoolProp** - Real fluid thermodynamic properties
 - **Plotly** - Interactive visualizations
-- **Streamlit** - Web UI framework
 - **NumPy/SciPy** - Numerical computing
 - **numpy-stl** - STL geometry export
 - **FastAPI** + **Uvicorn** - REST API server
@@ -302,13 +280,12 @@ Important public exports (from `resa/__init__.py`):
 
 ## Guidelines for Making Changes
 
-1. **Physics modules** (`resa/physics/`) must remain pure functions with no side effects or state. They should not import from `solvers/` or `ui/`.
+1. **Physics modules** (`resa/physics/`) must remain pure functions with no side effects or state. They should not import from `solvers/`.
 2. **New solvers** should implement the appropriate ABC from `core/interfaces.py`.
 3. **Result types** must be frozen dataclasses (`@dataclass(frozen=True)`).
 4. **New addons** go in `resa/addons/<module_name>/` and should implement `AnalysisModule` for UI integration.
 5. **Visualization** code goes in `resa/visualization/` using Plotly and the `PlotTheme` system.
-6. **UI pages** go in `resa/ui/pages/` as Streamlit page modules.
-7. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`ui`/`reporting` depend on everything above but never the reverse. `api/` depends on the `resa` package but is not part of it.
+6. **Keep the dependency direction**: `core` depends on nothing; `physics` depends on `core`; `solvers` depends on `core` + `physics`; `visualization`/`reporting` depend on everything above but never the reverse. `api/` depends on the `resa` package but is not part of it.
 8. **REST API** (`api/`) uses FastAPI and Pydantic v2. Routers live in `api/routers/`, models in `api/models/`, services in `api/services/`. The server also serves the compiled React frontend from `web/dist/`.
 9. **Legacy directories** (`rocket_engine/`, `fluid_lib/`, `swirl_injector/`, `torch_igniter_advanced/`, `advanced_contour_design/`) contain older code being migrated into the `resa/` package. New development should go in `resa/`.
 10. **Test files** currently live in `torch_igniter_advanced/`. New tests should use `pytest` conventions and target `resa/` package code.

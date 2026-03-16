@@ -1,3 +1,0 @@
-"""
-RESA Streamlit UI Package
-"""
