@@ -23,7 +23,6 @@ A comprehensive Python toolkit (v2.0.0) for liquid rocket engine preliminary des
 - **Multi-point Optimization** — Scipy-based design optimization
 - **Tank Simulation** — Pressurization and depletion modeling
 - **REST API** — FastAPI backend with React/TypeScript frontend
-- **Streamlit UI** — Interactive design interface (12 pages)
 - **Project Management** — Git-integrated design version control
 - **HTML Reports** — Professional embedded-Plotly reports
 
@@ -40,19 +39,11 @@ cd RESA
 pip install -e ".[dev]"
 ```
 
-**Core dependencies:** numpy, scipy, plotly, streamlit, pyyaml, CoolProp, pandas, numpy-stl, fastapi, uvicorn, pydantic
+**Core dependencies:** numpy, scipy, plotly, pyyaml, CoolProp, pandas, numpy-stl, fastapi, uvicorn, pydantic
 
 ---
 
 ## Quick Start
-
-### Streamlit UI
-
-```bash
-streamlit run resa/ui/app.py
-# Or via the installed entry point:
-resa
-```
 
 ### FastAPI + React (Full-Stack)
 
@@ -167,7 +158,6 @@ RESA/
 │   ├── analysis/                  # Monte Carlo, optimization
 │   ├── visualization/             # Plotly interactive plots
 │   ├── reporting/                 # HTML report generation
-│   ├── ui/                        # Streamlit application (12 pages)
 │   └── projects/                  # Git-based project/version management
 │
 ├── api/                           # FastAPI REST API
@@ -221,7 +211,7 @@ solvers  →  core, physics
 geometry  →  core, physics
 addons  →  core, physics, solvers, geometry
 analysis  →  core, physics, solvers
-visualization / reporting / ui  →  everything above
+visualization / reporting  →  everything above
 api  →  resa package
 ```
 
@@ -282,12 +272,6 @@ pytest --cov=resa                       # with coverage
 black --check .     # formatting (line-length 100)
 ruff check .        # linting
 ```
-
-### Adding a New UI Page
-
-1. Create `resa/ui/pages/my_page.py` with a `render_my_page()` function
-2. Register in `resa/ui/pages/__init__.py`
-3. Add navigation entry in `resa/ui/app.py`
 
 ### Adding a New Addon Module
 
