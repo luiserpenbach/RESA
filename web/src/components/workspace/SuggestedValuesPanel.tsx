@@ -127,7 +127,7 @@ export function SuggestedValuesPanel({ config, result }: SuggestedValuesPanelPro
       margin: { l: 110, r: 20, t: 50, b: 55 },
     };
 
-    Plotly.newPlot(lstarRef.current, data, layout, PLOTLY_CONFIG);
+    Plotly.newPlot(lstarRef.current, data as Plotly.Data[], layout, PLOTLY_CONFIG);
     return () => { if (lstarRef.current) Plotly.purge(lstarRef.current); };
   }, [config.L_star, config.fuel, config.oxidizer, currentKey]);
 
@@ -184,7 +184,7 @@ export function SuggestedValuesPanel({ config, result }: SuggestedValuesPanelPro
       height: 280,
     };
 
-    Plotly.newPlot(crRef.current, data, layout, PLOTLY_CONFIG);
+    Plotly.newPlot(crRef.current, data as Plotly.Data[], layout, PLOTLY_CONFIG);
     return () => { if (crRef.current) Plotly.purge(crRef.current); };
   }, [config.contraction_ratio, dt]);
 
