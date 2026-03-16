@@ -10,16 +10,20 @@ A comprehensive Python toolkit (v2.0.0) for liquid rocket engine preliminary des
 
 - **Combustion Analysis** — CEA-based equilibrium chemistry via RocketCEA
 - **Regenerative Cooling** — 1D marching solver with real fluid properties (CoolProp)
+- **N2O Cooling** — Specialized two-phase N2O boiling analysis
 - **Injector Design** — LCSC/GCSC swirl injector sizing with Cd estimation
 - **Torch Igniter** — HEM two-phase flow igniter sizing
 - **Throttle Analysis** — Operating envelope mapping and optimization
+- **Performance Analysis** — Isp, thrust, and efficiency calculations
+- **Structural Analysis** — Chamber and nozzle wall structural assessment
+- **Feed System** — Hydraulic feed system sizing and analysis
 - **Two-Phase Flow** — N2O orifice models (SPI, HEM, Dyer)
 - **3D Visualization** — WebGL nozzle viewer and STL/DXF export
 - **Monte Carlo UQ** — Latin Hypercube Sampling uncertainty quantification
 - **Multi-point Optimization** — Scipy-based design optimization
 - **Tank Simulation** — Pressurization and depletion modeling
-- **REST API** — FastAPI backend with React frontend
-- **Streamlit UI** — Interactive design interface
+- **REST API** — FastAPI backend with React/TypeScript frontend
+- **Streamlit UI** — Interactive design interface (12 pages)
 - **Project Management** — Git-integrated design version control
 - **HTML Reports** — Professional embedded-Plotly reports
 
@@ -149,28 +153,31 @@ cooling:
 ```
 RESA/
 ├── resa/                          # Main package (v2.0)
-│   ├── core/                      # Config, results, interfaces, exceptions
+│   ├── core/                      # Config, results, interfaces, exceptions, materials, session
 │   ├── physics/                   # Pure physics calculations (no side effects)
+│   │   └── isentropic, heat_transfer, cooling_n2o, fluids, performance, structural, feed_system
 │   ├── solvers/                   # Integrated analysis solvers
+│   │   └── combustion, cooling, performance, structural, feed_system
 │   ├── geometry/                  # Nozzle and channel geometry generators
 │   ├── addons/                    # Specialized design modules
-│   │   ├── igniter/               # Torch igniter sizing
+│   │   ├── igniter/               # Torch igniter sizing (CEA + HEM)
 │   │   ├── injector/              # Swirl injector design (LCSC/GCSC)
 │   │   ├── contour/               # 3D nozzle contour + STL/DXF export
 │   │   └── tank/                  # Tank pressurization simulation
 │   ├── analysis/                  # Monte Carlo, optimization
 │   ├── visualization/             # Plotly interactive plots
 │   ├── reporting/                 # HTML report generation
-│   ├── ui/                        # Streamlit application (13+ pages)
+│   ├── ui/                        # Streamlit application (12 pages)
 │   └── projects/                  # Git-based project/version management
 │
 ├── api/                           # FastAPI REST API
 │   ├── main.py                    # App entry point (serves React build)
-│   ├── routers/                   # engine.py, config_io.py
-│   ├── models/                    # Pydantic models
-│   └── services/                  # Serialization utilities
+│   ├── routers/                   # engine, cooling, nozzle_contour, performance,
+│   │                              #   structural, feed_system, session, config_io
+│   ├── models/                    # Pydantic v2 request/response models
+│   └── services/                  # Serialization, session management
 │
-├── web/                           # React frontend (served by FastAPI)
+├── web/                           # React + TypeScript frontend (Vite, served by FastAPI)
 ├── examples/                      # Example scripts
 ├── docs/                          # Documentation
 ├── Makefile                       # Build automation
@@ -204,6 +211,19 @@ EngineConfig (dataclass / YAML)
 3. **Immutable Results** — All result dataclasses use `@dataclass(frozen=True)`.
 4. **Interface Contracts** — ABCs in `core/interfaces.py` define `Solver`, `CombustionSolver`, `CoolingSolver`, `FluidProvider`, `GeometryGenerator`, etc.
 5. **Custom Exceptions** — All exceptions inherit from `RESAError` with contextual metadata (iterations, residuals, temperatures, pressures).
+
+### Dependency Direction
+
+```
+core  →  (nothing)
+physics  →  core
+solvers  →  core, physics
+geometry  →  core, physics
+addons  →  core, physics, solvers, geometry
+analysis  →  core, physics, solvers
+visualization / reporting / ui  →  everything above
+api  →  resa package
+```
 
 ---
 
@@ -273,18 +293,11 @@ ruff check .        # linting
 
 New specialized design modules go in `resa/addons/<module_name>/` and should implement the `AnalysisModule` interface from `core/interfaces.py`.
 
-### Dependency Direction
+### Adding a New API Router
 
-```
-core  →  (nothing)
-physics  →  core
-solvers  →  core, physics
-geometry  →  core, physics
-addons  →  core, physics, solvers, geometry
-analysis  →  core, physics, solvers
-visualization / reporting / ui  →  everything above
-api  →  resa package
-```
+1. Create `api/routers/my_router.py` with FastAPI router and endpoint handlers
+2. Create corresponding `api/models/my_models.py` with Pydantic v2 request/response models
+3. Register the router in `api/main.py`
 
 ---
 
@@ -296,7 +309,13 @@ Base URL: `http://localhost:8000/api/v1`
 |--------|------|-------------|
 | GET | `/health` | Health check |
 | POST | `/engine/design` | Run full engine design |
-| GET/POST | `/config/...` | Config I/O |
+| POST | `/cooling/analyze` | Regenerative cooling analysis |
+| POST | `/contour/generate` | Nozzle contour generation |
+| POST | `/performance/analyze` | Engine performance analysis |
+| POST | `/structural/analyze` | Structural analysis |
+| POST | `/feed-system/analyze` | Feed system analysis |
+| GET/POST | `/session/...` | Session state management |
+| GET/POST | `/config/...` | Config import/export |
 
 Full interactive docs: `http://localhost:8000/docs` (Swagger UI)
 
