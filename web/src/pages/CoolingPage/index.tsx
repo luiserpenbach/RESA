@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Icon } from "@blueprintjs/core";
 import { ModuleGate } from "../../components/common/ModuleGate";
 import { StaleDataBanner } from "../../components/common/StaleDataBanner";
@@ -17,6 +17,19 @@ function extractError(err: unknown): string {
   return "Cooling analysis failed.";
 }
 
+const coolingInputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 26,
+  padding: "0 7px",
+  background: "var(--bg-base)",
+  border: "1px solid var(--border-default)",
+  borderRadius: "var(--radius-sm)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--font-mono)",
+  fontSize: 12,
+  boxSizing: "border-box" as const,
+};
+
 function CoolingConfigForm({
   config,
   onChange,
@@ -30,119 +43,130 @@ function CoolingConfigForm({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Channel type */}
-      <div>
-        <label className="form-label">Channel Type</label>
-        <select
-          className="form-select"
-          value={config.channel_type}
-          onChange={(e) => onChange({ channel_type: e.target.value as "rectangular" | "trapezoidal" })}
-        >
-          <option value="rectangular">Rectangular</option>
-          <option value="trapezoidal">Trapezoidal</option>
-        </select>
-      </div>
+      <table className="param-table">
+        <tbody>
+          <tr>
+            <td className="param-label">Channel Type</td>
+            <td className="param-value">
+              <select
+                className="form-select"
+                value={config.channel_type}
+                onChange={(e) => onChange({ channel_type: e.target.value as "rectangular" | "trapezoidal" })}
+              >
+                <option value="rectangular">Rectangular</option>
+                <option value="trapezoidal">Trapezoidal</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Height Profile</td>
+            <td className="param-value">
+              <select
+                className="form-select"
+                value={config.height_profile}
+                onChange={(e) =>
+                  onChange({ height_profile: e.target.value as "constant" | "tapered" | "custom" })
+                }
+              >
+                <option value="constant">Constant</option>
+                <option value="tapered">Tapered</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Height at Throat [mm]</td>
+            <td className="param-value">
+              <input
+                style={coolingInputStyle}
+                type="number"
+                step="0.1"
+                value={config.height_throat_m * 1e3}
+                onChange={(e) => onChange({ height_throat_m: Number(e.target.value) / 1e3 })}
+              />
+            </td>
+          </tr>
 
-      {/* Height profile */}
-      <div>
-        <label className="form-label">Height Profile</label>
-        <select
-          className="form-select"
-          value={config.height_profile}
-          onChange={(e) =>
-            onChange({ height_profile: e.target.value as "constant" | "tapered" | "custom" })
-          }
-        >
-          <option value="constant">Constant</option>
-          <option value="tapered">Tapered</option>
-        </select>
-      </div>
+          {config.height_profile === "tapered" && (
+            <>
+              <tr>
+                <td className="param-label">Height at Chamber [mm]</td>
+                <td className="param-value">
+                  <input
+                    style={coolingInputStyle}
+                    type="number"
+                    step="0.1"
+                    value={config.height_chamber_m * 1e3}
+                    onChange={(e) => onChange({ height_chamber_m: Number(e.target.value) / 1e3 })}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="param-label">Height at Exit [mm]</td>
+                <td className="param-value">
+                  <input
+                    style={coolingInputStyle}
+                    type="number"
+                    step="0.1"
+                    value={config.height_exit_m * 1e3}
+                    onChange={(e) => onChange({ height_exit_m: Number(e.target.value) / 1e3 })}
+                  />
+                </td>
+              </tr>
+            </>
+          )}
 
-      {/* Heights */}
-      <div>
-        <label className="form-label">Height at Throat [mm]</label>
-        <input
-          className="form-input"
-          type="number"
-          step="0.1"
-          value={config.height_throat_m * 1e3}
-          onChange={(e) => onChange({ height_throat_m: Number(e.target.value) / 1e3 })}
-        />
-      </div>
+          {config.channel_type === "trapezoidal" && (
+            <tr>
+              <td className="param-label">Taper Angle [deg]</td>
+              <td className="param-value">
+                <input
+                  style={coolingInputStyle}
+                  type="number"
+                  step="1"
+                  value={config.taper_angle_deg}
+                  onChange={(e) => onChange({ taper_angle_deg: Number(e.target.value) })}
+                />
+              </td>
+            </tr>
+          )}
 
-      {config.height_profile === "tapered" && (
-        <>
-          <div>
-            <label className="form-label">Height at Chamber [mm]</label>
-            <input
-              className="form-input"
-              type="number"
-              step="0.1"
-              value={config.height_chamber_m * 1e3}
-              onChange={(e) => onChange({ height_chamber_m: Number(e.target.value) / 1e3 })}
-            />
-          </div>
-          <div>
-            <label className="form-label">Height at Exit [mm]</label>
-            <input
-              className="form-input"
-              type="number"
-              step="0.1"
-              value={config.height_exit_m * 1e3}
-              onChange={(e) => onChange({ height_exit_m: Number(e.target.value) / 1e3 })}
-            />
-          </div>
-        </>
-      )}
+          <tr>
+            <td className="param-label">Channel Count Override</td>
+            <td className="param-value">
+              <input
+                style={coolingInputStyle}
+                type="number"
+                step="1"
+                placeholder="Auto"
+                value={config.num_channels_override ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    num_channels_override: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className="param-label">Max Aspect Ratio</td>
+            <td className="param-value">
+              <input
+                style={coolingInputStyle}
+                type="number"
+                step="1"
+                value={config.aspect_ratio_limit}
+                onChange={(e) => onChange({ aspect_ratio_limit: Number(e.target.value) })}
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      {config.channel_type === "trapezoidal" && (
-        <div>
-          <label className="form-label">Taper Angle [deg]</label>
-          <input
-            className="form-input"
-            type="number"
-            step="1"
-            value={config.taper_angle_deg}
-            onChange={(e) => onChange({ taper_angle_deg: Number(e.target.value) })}
-          />
-        </div>
-      )}
-
-      {/* Channels override */}
-      <div>
-        <label className="form-label">Channel Count Override</label>
-        <input
-          className="form-input"
-          type="number"
-          step="1"
-          placeholder="Auto"
-          value={config.num_channels_override ?? ""}
-          onChange={(e) =>
-            onChange({
-              num_channels_override: e.target.value ? Number(e.target.value) : null,
-            })
-          }
-        />
-      </div>
-
-      {/* Aspect ratio limit */}
-      <div>
-        <label className="form-label">Max Aspect Ratio</label>
-        <input
-          className="form-input"
-          type="number"
-          step="1"
-          value={config.aspect_ratio_limit}
-          onChange={(e) => onChange({ aspect_ratio_limit: Number(e.target.value) })}
-        />
-      </div>
-
-      {/* Run button */}
       <button
         className={`run-btn ${isRunning ? "is-running" : ""}`}
         onClick={onRun}
         disabled={isRunning}
-        style={{ marginTop: 12, width: "100%" }}
+        style={{ marginTop: 4, width: "100%" }}
       >
         <Icon icon={isRunning ? "dot" : "play"} size={12} />
         {isRunning ? "COMPUTING..." : "RUN COOLING"}
@@ -189,12 +213,12 @@ function CoolingWorkspace({
         },
       ],
       layout: {
-        xaxis: { title: "Axial Position [mm]", color: "#94a3b8", gridcolor: "#1f2d45" },
-        yaxis: { title: "Dimension [mm]", color: "#94a3b8", gridcolor: "#1f2d45" },
-        legend: { font: { color: "#94a3b8" } },
-        paper_bgcolor: "#111827",
-        plot_bgcolor: "#111827",
-        font: { color: "#e2e8f0", size: 11 },
+        xaxis: { title: "Axial Position [mm]", color: "#a0a0a0", gridcolor: "#252525", linecolor: "#2e2e2e" },
+        yaxis: { title: "Dimension [mm]", color: "#a0a0a0", gridcolor: "#252525", linecolor: "#2e2e2e" },
+        legend: { font: { color: "#a0a0a0" }, bgcolor: "rgba(22,22,22,0.85)", bordercolor: "#2e2e2e", borderwidth: 1 },
+        paper_bgcolor: "#161616",
+        plot_bgcolor: "#111111",
+        font: { color: "#e2e2e2", size: 11 },
         margin: { l: 50, r: 20, t: 30, b: 50 },
       },
     });
