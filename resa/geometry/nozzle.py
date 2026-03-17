@@ -1,8 +1,12 @@
 """Nozzle Geometry Generator for RESA."""
+import logging
+
 import numpy as np
 from typing import Optional
 
 from resa.core.results import NozzleGeometry
+
+logger = logging.getLogger(__name__)
 
 
 class NozzleGenerator:
@@ -84,6 +88,64 @@ class NozzleGenerator:
             theta_exit=theta_e
         )
 
+    # Rao (1958) parabolic bell nozzle angles for three reference bell fractions.
+    # Source: Rao (1958) "Exhaust nozzle contour for optimum thrust"; tabulated
+    # values from Huzel & Huang (1992) and NASA SP-8120 for 60%, 80%, 100% lengths.
+    # θ_n: initial parabola angle at throat arc tangent point [degrees]
+    # θ_e: exit angle of the parabola [degrees]
+    _RAO_AR = [4, 5, 10, 20, 30, 40, 50, 100]
+
+    _RAO_TN = {
+        0.60: [25.0, 27.0, 30.5, 33.5, 35.0, 36.0, 36.5, 39.0],
+        0.80: [21.5, 23.0, 26.3, 28.8, 30.0, 31.0, 31.5, 33.5],
+        1.00: [18.0, 19.5, 22.5, 24.5, 25.5, 26.5, 27.0, 29.0],
+    }
+    _RAO_TE = {
+        0.60: [18.0, 17.0, 14.0, 12.0, 11.0, 10.5, 10.0, 9.0],
+        0.80: [14.0, 13.0, 11.0, 9.0, 8.5, 8.0, 7.5, 7.0],
+        1.00: [10.0, 9.5, 8.5, 7.0, 6.5, 6.0, 5.5, 5.0],
+    }
+    _RAO_FRACTIONS = sorted(_RAO_TN.keys())  # [0.60, 0.80, 1.00]
+
+    def _rao_angles(self, eps: float, length_fraction: float):
+        """Return (θ_n, θ_e) in degrees via bilinear interpolation on ε and Lf.
+
+        Clamps to the tabulated range [0.60, 1.00] and logs a warning for
+        bell fractions outside that range.
+        """
+        lf = length_fraction
+        if lf < self._RAO_FRACTIONS[0] or lf > self._RAO_FRACTIONS[-1]:
+            logger.warning(
+                "Bell fraction %.2f is outside the Rao table range [%.2f, %.2f]; "
+                "clamping to boundary — angles will be approximate.",
+                lf,
+                self._RAO_FRACTIONS[0],
+                self._RAO_FRACTIONS[-1],
+            )
+            lf = max(self._RAO_FRACTIONS[0], min(lf, self._RAO_FRACTIONS[-1]))
+
+        # Find bounding fraction indices
+        fracs = self._RAO_FRACTIONS
+        for k in range(len(fracs) - 1):
+            if fracs[k] <= lf <= fracs[k + 1]:
+                f_lo, f_hi = fracs[k], fracs[k + 1]
+                break
+        else:
+            f_lo = f_hi = fracs[-1]
+
+        tn_lo = float(np.interp(eps, self._RAO_AR, self._RAO_TN[f_lo]))
+        tn_hi = float(np.interp(eps, self._RAO_AR, self._RAO_TN[f_hi]))
+        te_lo = float(np.interp(eps, self._RAO_AR, self._RAO_TE[f_lo]))
+        te_hi = float(np.interp(eps, self._RAO_AR, self._RAO_TE[f_hi]))
+
+        if f_hi == f_lo:
+            return tn_lo, te_lo
+
+        t = (lf - f_lo) / (f_hi - f_lo)
+        theta_n_deg = tn_lo + t * (tn_hi - tn_lo)
+        theta_e_deg = te_lo + t * (te_hi - te_lo)
+        return theta_n_deg, theta_e_deg
+
     def _generate_rao_bell(
         self,
         Rt: float,
@@ -92,13 +154,8 @@ class NozzleGenerator:
         length_fraction: float
     ):
         """Generate thrust-optimized parabolic bell nozzle."""
-        # Rao angles from empirical data (80% bell)
-        ar_data = [4, 5, 10, 20, 30, 40, 50, 100]
-        tn_80_deg = [21.5, 23.0, 26.3, 28.8, 30.0, 31.0, 31.5, 33.5]
-        te_80_deg = [14.0, 13.0, 11.0, 9.0, 8.5, 8.0, 7.5, 7.0]
-
-        theta_n_deg = np.interp(eps, ar_data, tn_80_deg)
-        theta_e_deg = np.interp(eps, ar_data, te_80_deg)
+        # Rao angles interpolated for the given expansion ratio and bell fraction
+        theta_n_deg, theta_e_deg = self._rao_angles(eps, length_fraction)
         theta_n = np.radians(theta_n_deg)
         theta_e = np.radians(theta_e_deg)
 
@@ -112,13 +169,25 @@ class NozzleGenerator:
         x_trans = R_arc_div * np.sin(angle_range_trans)
         y_trans = Rt + R_arc_div * (1 - np.cos(angle_range_trans))
 
-        # Bezier control points
+        # Bézier control points from two-point tangent intersection
         Nx, Ny = x_trans[-1], y_trans[-1]
         Ex, Ey = L_nozzle, Re
         m1, m2 = np.tan(theta_n), np.tan(theta_e)
         C1, C2 = Ny - m1 * Nx, Ey - m2 * Ex
-        Qx = (C2 - C1) / (m1 - m2)
-        Qy = (m1 * C2 - m2 * C1) / (m1 - m2)
+        denom = m1 - m2
+        if abs(denom) < 1e-8:
+            # Parallel tangents — degenerate case (can occur at extreme bell fractions
+            # or expansion ratios). Fall back to midpoint control point.
+            logger.warning(
+                "Bézier control point singularity: m1≈m2=%.4f (eps=%.1f, Lf=%.2f). "
+                "Using midpoint fallback.",
+                m1, eps, length_fraction,
+            )
+            Qx = (Nx + Ex) / 2.0
+            Qy = (Ny + Ey) / 2.0
+        else:
+            Qx = (C2 - C1) / denom
+            Qy = (m1 * C2 - m2 * C1) / denom
 
         # Quadratic Bezier curve
         t = np.linspace(0, 1, 100)

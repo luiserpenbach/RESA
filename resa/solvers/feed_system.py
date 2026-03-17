@@ -233,10 +233,25 @@ class FeedSystemSolver(Solver[FeedSystemResult]):
             pump_power_fuel_w = fuel_pump["power_w"]
             pump_head_fuel_m = fuel_pump["head_m"]
 
-            # NPSH (using ox side as critical, assume vapor pressure ~ 30 bar
-            # for N2O at ~280K)
+            # NPSH (using ox side as critical)
+            # Compute N2O saturation pressure at the actual inlet temperature
+            # via CoolProp; fall back to a 30-bar estimate if unavailable.
             p_tank_pa = tank_pressure_bar * 1e5
-            p_vapor_pa = 30.0 * 1e5  # N2O approximate vapor pressure
+            try:
+                import CoolProp.CoolProp as _CP
+                p_vapor_pa = _CP.PropsSI(
+                    'P', 'T', config.ox_inlet_temp_k, 'Q', 0, 'NitrousOxide'
+                )
+                logger.debug(
+                    "N2O saturation pressure at %.1f K: %.2f bar",
+                    config.ox_inlet_temp_k,
+                    p_vapor_pa / 1e5,
+                )
+            except Exception:
+                p_vapor_pa = 30.0 * 1e5  # fallback: ~30 bar at ~280 K
+                logger.warning(
+                    "CoolProp N2O vapor pressure lookup failed; using fallback 30 bar"
+                )
             npsh_avail_m = npsh_available(
                 p_tank_pa=p_tank_pa,
                 p_vapor_pa=p_vapor_pa,
@@ -254,8 +269,8 @@ class FeedSystemSolver(Solver[FeedSystemResult]):
 
             # --- Step 6: Cycle power balance ---
             if config.cycle_type == "gas-generator":
-                # GG flow ~ 2-5% of total; use 3% estimate
-                mdot_gg = 0.03 * mdot_total
+                # GG flow fraction is configurable (typical range 1.5–5% of total)
+                mdot_gg = config.gg_flow_fraction * mdot_total
                 p_turb_in = pc_bar * 0.9 * 1e5  # GG pressure ~ 90% Pc
                 p_turb_out = _P_ATM_PA
 
@@ -270,6 +285,7 @@ class FeedSystemSolver(Solver[FeedSystemResult]):
                     mdot_pump=mdot_total,
                     dp_pump=dp_pump_total_pa,
                     rho_pump=rho_avg,
+                    gamma_gg=config.gamma_gg,
                 )
                 turbine_power_w = gg_balance["turbine_power_w"]
                 power_balance_margin = gg_balance["margin_pct"] / 100.0
@@ -305,6 +321,7 @@ class FeedSystemSolver(Solver[FeedSystemResult]):
                     mdot_pump=mdot_total,
                     dp_pump=dp_pump_total_pa,
                     rho_pump=rho_avg,
+                    gamma_exp=config.gamma_exp,
                 )
                 turbine_power_w = exp_balance["turbine_power_w"]
                 margin_w = exp_balance["margin_w"]

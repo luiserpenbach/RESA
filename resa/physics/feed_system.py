@@ -217,12 +217,12 @@ def gas_generator_power_balance(
     mdot_pump: float,
     dp_pump: float,
     rho_pump: float,
+    gamma_gg: float = 1.2,
 ) -> dict:
     """Gas generator cycle power balance.
 
     Calculates turbine power from GG exhaust expansion and compares
-    against pump power requirement. Uses gamma=1.2 approximation for
-    fuel-rich GG combustion products.
+    against pump power requirement.
 
     Args:
         mdot_gg: Gas generator mass flow rate [kg/s].
@@ -235,6 +235,9 @@ def gas_generator_power_balance(
         mdot_pump: Total pump mass flow rate [kg/s].
         dp_pump: Total pump pressure rise [Pa].
         rho_pump: Average fluid density through pump [kg/m^3].
+        gamma_gg: Specific heat ratio of GG combustion products (default 1.2 for
+            fuel-rich mixtures). Determines the isentropic expansion exponent
+            (γ-1)/γ used in the turbine work calculation.
 
     Returns:
         Dict with keys:
@@ -243,10 +246,9 @@ def gas_generator_power_balance(
             margin_w: Power surplus (turbine - pump) [W].
             margin_pct: Power margin as percentage of pump power.
     """
-    gamma_gg = 1.2
     pressure_ratio = p_out / p_in
 
-    # Isentropic turbine work with efficiency
+    # Isentropic turbine work with efficiency; exponent derived from gamma
     exponent = (gamma_gg - 1.0) / gamma_gg
     turbine_power_w = (
         mdot_gg * cp_gg * T_gg * eta_turbine * (1.0 - pressure_ratio**exponent)
@@ -281,11 +283,13 @@ def expander_cycle_power_balance(
     mdot_pump: float,
     dp_pump: float,
     rho_pump: float,
+    gamma_exp: float = 1.25,
 ) -> dict:
     """Expander cycle power balance using coolant enthalpy rise.
 
     The turbine is driven by heated coolant expanding from turbine inlet
-    to outlet pressure. Uses a simplified pressure-ratio correction factor.
+    to outlet pressure. The pressure-ratio correction uses the isentropic
+    exponent (γ-1)/γ derived from the turbine working fluid's specific heat ratio.
 
     Args:
         mdot_coolant: Coolant mass flow rate through turbine [kg/s].
@@ -297,6 +301,9 @@ def expander_cycle_power_balance(
         mdot_pump: Total pump mass flow rate [kg/s].
         dp_pump: Total pump pressure rise [Pa].
         rho_pump: Average fluid density through pump [kg/m^3].
+        gamma_exp: Specific heat ratio of the turbine working fluid (default 1.25
+            for heated hydrocarbon vapour). Sets the isentropic pressure-ratio
+            exponent (γ-1)/γ used in the expansion work correction.
 
     Returns:
         Dict with keys:
@@ -304,7 +311,8 @@ def expander_cycle_power_balance(
             pump_power_w: Required pump power [W].
             margin_w: Power surplus (turbine - pump) [W].
     """
-    pressure_ratio_factor = 1.0 - (p_out / p_in) ** 0.3
+    exponent = (gamma_exp - 1.0) / gamma_exp
+    pressure_ratio_factor = 1.0 - (p_out / p_in) ** exponent
     turbine_power_w = (
         mdot_coolant * dh_coolant_j_kg * eta_turbine * pressure_ratio_factor
     )
