@@ -507,11 +507,11 @@ class Engine:
     ) -> CoolingResult:
         """Run regenerative cooling analysis."""
         try:
+            # coolant_mass_fraction is the fraction of total engine mass flow
+            # routed through the cooling jacket, regardless of flow direction.
+            # Set this to mr/(1+mr) in the config when the oxidizer is the coolant
+            # (e.g. N2O counter-flow cooling) and all oxidizer passes through the jacket.
             coolant_flow = mass_flow * self.config.coolant_mass_fraction
-            if self.config.cooling_mode == 'counter-flow':
-                # Use oxidizer fraction
-                coolant_flow = mass_flow * self.config.mr / (1 + self.config.mr)
-                coolant_flow *= self.config.coolant_mass_fraction
 
             return self._cooling_solver.solve(
                 mdot_coolant=coolant_flow,

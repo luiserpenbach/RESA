@@ -16,13 +16,15 @@ class RegenCoolingSolver:
     using a marching method along the channel length.
     """
 
-    def __init__(self, wall_conductivity: float = 15.0):
+    def __init__(self, wall_conductivity: float = 320.0):
         """
         Initialize cooling solver.
 
         Args:
             wall_conductivity: Thermal conductivity of wall material [W/m-K]
-                              Default 15 W/m-K for copper alloy
+                              Default 320 W/m-K for CuCrZr copper alloy.
+                              Note: stainless steel is ~15 W/m-K; using the
+                              wrong value causes wall ΔT errors of ~20×.
         """
         self.k_wall = wall_conductivity
 
@@ -126,10 +128,11 @@ class RegenCoolingSolver:
             hg = hg_work[i]
 
             def get_hc(T_wall_c):
+                # Dittus-Boelter for turbulent heating (Re^0.8 Pr^0.4)
+                # h = Nu * k / D_h — no additional perimeter multiplier;
+                # D_h already encodes the rectangular channel geometry.
                 Nu = 0.023 * (Re ** 0.8) * (prandtl ** 0.4)
-                h_base = (cond / D_h) * Nu
-                perimeter_wetted = width + 2 * height
-                return h_base * (perimeter_wetted / width)
+                return (cond / D_h) * Nu
 
             def heat_balance_residual(Twg):
                 q_flux_in = hg * (Tg - Twg)
@@ -162,10 +165,21 @@ class RegenCoolingSolver:
                 delta_H = q_total_segment / mdot_channel
                 current_H += delta_H
 
-                # Pressure drop
+                # Friction pressure drop (Darcy-Weisbach)
                 f = self._friction_factor(Re, geometry.roughness, D_h)
                 dp_friction = f * (dx_axial / D_h) * (0.5 * rho * vel ** 2)
-                current_P -= dp_friction
+
+                # Acceleration pressure drop: dp_acc = G² * (1/ρ_out - 1/ρ_in)
+                # Significant when density changes along the channel (heated flow).
+                G_sq = (mdot_channel / Area_flow) ** 2
+                try:
+                    rho_next = CP.PropsSI('D', 'H', current_H, 'P', current_P, fluid_name)
+                    dp_acc = G_sq * (1.0 / max(rho_next, 1.0) - 1.0 / max(rho, 1.0))
+                    dp_acc = max(dp_acc, 0.0)  # only subtract positive (accelerating) losses
+                except ValueError:
+                    dp_acc = 0.0
+
+                current_P -= (dp_friction + dp_acc)
 
             # Record
             T_coolant[i] = T_bulk

@@ -144,12 +144,16 @@ def combined_wall_stress(
 
     sigma_thermal = thermal_stress(delta_T, alpha_cte, E_modulus, poisson)
 
-    # Von Mises equivalent stress (biaxial: hoop + thermal in different directions)
-    sigma_vm = math.sqrt(
-        sigma_hoop**2
-        + sigma_thermal**2
-        - sigma_hoop * sigma_thermal
-    )
+    # Combined principal stresses at the cold (outer) wall face — the critical location
+    # where both hoop stress and thermal stress are tensile:
+    #   σ_1 (circumferential) = σ_hoop + σ_thermal
+    #   σ_2 (axial)           = σ_hoop/2 + σ_thermal   (thin-wall: σ_axial = σ_hoop/2)
+    # Both stresses act in-plane; Von Mises for biaxial state: √(σ₁² + σ₂² − σ₁σ₂)
+    # Note: thermal stress here is E·α·ΔT/(1−ν), the peak surface value for a
+    # constrained plate. It acts equally in the circumferential and axial directions.
+    sigma_1 = sigma_hoop + sigma_thermal
+    sigma_2 = sigma_hoop / 2.0 + sigma_thermal
+    sigma_vm = math.sqrt(sigma_1 ** 2 + sigma_2 ** 2 - sigma_1 * sigma_2)
 
     return {
         "hoop_stress": sigma_hoop,

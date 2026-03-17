@@ -113,6 +113,14 @@ class FeedSystemConfig:
     # Gas generator parameters (used when cycle_type='gas-generator')
     gg_temperature_k: float = 900.0
     gg_mr: float = 0.3  # fuel-rich GG mixture ratio
+    gg_flow_fraction: float = 0.03  # GG mass flow as fraction of total (typical 0.015–0.05)
+    gamma_gg: float = 1.2  # Specific heat ratio of GG combustion products (fuel-rich)
+
+    # Expander cycle parameters (used when cycle_type='expander')
+    gamma_exp: float = 1.25  # Specific heat ratio of turbine working fluid
+
+    # Oxidizer properties (used for NPSH calculation in pump-fed systems)
+    ox_inlet_temp_k: float = 280.0  # Oxidizer temperature at pump inlet [K]
 
     # Suction parameters
     suction_head_m: float = 1.0

@@ -5,6 +5,7 @@ Calculates minimum wall thickness and stress distribution along the
 nozzle contour considering pressure and thermal loads.
 """
 import logging
+from typing import Optional
 
 import numpy as np
 
@@ -55,6 +56,8 @@ class WallThicknessSolver(Solver):
         safety_factor_pressure: float = 2.0,
         safety_factor_thermal: float = 1.5,
         actual_wall_thickness: float = 0.001,
+        mach_numbers: Optional[np.ndarray] = None,
+        gamma: float = 1.2,
     ) -> WallThicknessResult:
         """Run wall thickness analysis along the nozzle.
 
@@ -66,6 +69,11 @@ class WallThicknessSolver(Solver):
             safety_factor_pressure: Safety factor for pressure loads
             safety_factor_thermal: Safety factor for thermal loads
             actual_wall_thickness: Actual wall thickness [m]
+            mach_numbers: Mach number array along nozzle contour (same length as
+                nozzle_geometry.x_full). When provided, local static pressure is
+                computed via isentropic relation P = Pc*(1+(γ-1)/2*M²)^(-γ/(γ-1))
+                instead of using Pc everywhere. Pass from engine gas-dynamics output.
+            gamma: Specific heat ratio for isentropic pressure calculation (default 1.2).
 
         Returns:
             WallThicknessResult with stress and thickness arrays
@@ -76,6 +84,14 @@ class WallThicknessSolver(Solver):
         x = nozzle_geometry.x_full
         y = nozzle_geometry.y_full  # local radius [m]
         n = len(x)
+
+        # Interpolate Mach numbers onto the nozzle grid if provided
+        if mach_numbers is not None and len(mach_numbers) != n:
+            mach_numbers = np.interp(
+                np.linspace(0, 1, n),
+                np.linspace(0, 1, len(mach_numbers)),
+                mach_numbers,
+            )
 
         # Get heat flux and temperature arrays from cooling result
         q_flux = cooling_result.q_flux
@@ -94,10 +110,18 @@ class WallThicknessSolver(Solver):
         sigma_thermal = np.zeros(n)
         sigma_vm = np.zeros(n)
 
+        isentropic_exp = -gamma / (gamma - 1)
+
         for i in range(n):
-            # Local pressure estimate (approximate: use Pc everywhere,
-            # could be refined with local static pressure from Mach)
-            p_local = pc_pa
+            # Local static pressure from isentropic flow if Mach numbers available.
+            # Using Pc everywhere overestimates pressure in the divergent section
+            # by up to an order of magnitude, leading to overly conservative wall
+            # thickness in the nozzle exit region.
+            if mach_numbers is not None:
+                M = float(mach_numbers[i])
+                p_local = pc_pa * (1.0 + 0.5 * (gamma - 1) * M ** 2) ** isentropic_exp
+            else:
+                p_local = pc_pa
 
             # Minimum thickness for pressure
             min_t_pressure[i] = min_wall_thickness_pressure(
