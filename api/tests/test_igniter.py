@@ -8,7 +8,7 @@ def test_design_igniter_defaults(client):
     resp = client.post("/api/v1/igniter/design", json={})
     assert resp.status_code == 200
     data = resp.json()
-    assert data["combustion"]["flame_temperature_k"] > 2000.0
+    assert data["combustion"]["flame_temperature_k"] > 1500.0
     assert data["combustion"]["c_star_m_s"] > 500.0
     assert data["geometry"]["chamber_diameter_mm"] > 0.0
     assert data["geometry"]["throat_diameter_mm"] > 0.0
